@@ -31,25 +31,6 @@ Penyandang tunarungu dan tunawicara di Indonesia bergantung pada SIBI untuk berk
 
 Tangan manusia pada dasarnya adalah jaringan sendi yang saling terhubung, mirip struktur graf, bukan sekadar kumpulan piksel. Graph Convolutional Network (GCN) dirancang untuk data berbentuk graf (Kipf & Welling, 2017; Yan et al., 2018) sehingga berpotensi menangkap hubungan geometris antar sendi, informasi penting untuk membedakan huruf yang bentuknya mirip (mis. M vs N, A vs S), dengan cara yang tidak dimiliki CNN berbasis piksel (Liu et al., 2025; Han et al., 2024). Namun belum ada riset lokal yang menguji langsung keunggulan representasi graf dibanding piksel pada huruf SIBI yang mirip, maupun kesiapan model GCN ringan dijalankan sebagai layanan cloud (You, 2025; Naayini, 2025) dan diintegrasikan dengan perangkat edge seperti ESP32 untuk komunikasi dua arah secara real-time (Yalabaka et al., 2024).
 
-**Sebagian referensi yang dipakai (format APA):**
-- Adhiyaksa, F., & Suciati, N. (2022). *Normalisasi koordinat landmark tangan untuk pengenalan gestur berbasis MediaPipe.*
-- Al-Hammadi, M., Muhammad, G., Abdul, W., Alsulaiman, M., Bencherif, M. A., & Mekhtiche, M. A. (2022). Spatial attention-based 3D graph convolutional neural network for sign language recognition. *Sensors, 22*(12), 4558. https://doi.org/10.3390/s22124558
-- Fadzli, F., & Rahardi, R. (2026). Comparative analysis of MobileNetV3 and EfficientNetV2B0 in BISINDO hand sign recognition using MediaPipe landmarks. *Jurnal Aplikasi Informatika dan Komputer (JAIC), 10*(1).
-- Gonfa, et al. (2025). A deep learning framework for Ethiopian Sign Language recognition using skeleton-based representation. *Scientific Reports.* https://doi.org/10.1038/s41598-025-19937-0
-- Han, X., et al. (2024). Spatio-temporal dynamic attention graph convolutional network based on skeleton gesture recognition. *Electronics, 13*(18), 3733. https://doi.org/10.3390/electronics13183733
-- Hu, L., Gao, L., Liu, Z., & Feng, W. (2024). *Dynamic spatial-temporal aggregation for skeleton-aware sign language recognition* [Preprint]. arXiv. https://arxiv.org/abs/2403.12519
-- Kelana, et al. (2025). Integrating the CNN model with the web for Indonesian Sign Language (BISINDO) recognition. *Jurnal Aplikasi Informatika dan Komputer (JAIC), 9*(3).
-- Kipf, T. N., & Welling, M. (2017). Semi-supervised classification with graph convolutional networks. *Proceedings of the International Conference on Learning Representations (ICLR).*
-- Liu, L., et al. (2025). *Skeleton-based sign language recognition using a dual-stream spatio-temporal dynamic graph convolutional network* [Preprint]. arXiv. https://arxiv.org/abs/2509.08661
-- Lugaresi, C., Tang, J., Nash, H., McClanahan, C., Uboweja, E., Hays, M., Zhang, F., Chang, C.-L., Yong, M. G., Lee, J., Chang, W.-T., Hua, W., Georg, M., & Grundmann, M. (2019). *MediaPipe: A framework for building perception pipelines* [Preprint]. arXiv. https://arxiv.org/abs/1906.08172
-- Naayini, P. (2025). Building AI-driven cloud-native applications with Kubernetes and containerization. *International Journal of Scientific and Innovative Applications (IJSCIA), 6*(2), 328–340.
-- Nurhayati, et al. (2022). *Sistem Isyarat Bahasa Indonesia (SIBI) metode Convolutional Neural Network sequential secara real time.*
-- Yalabaka et al. (2024). Sign-to-speech system based on ESP32 for real-time gesture-to-audio conversion.
-- Yan, S., Xiong, Y., & Lin, D. (2018). Spatial temporal graph convolutional networks for skeleton-based action recognition. *Proceedings of the AAAI Conference on Artificial Intelligence, 32*(1).
-- You, X. (2025). Lightweight graph convolutional network with multi-attention mechanisms for intelligent action recognition. *PeerJ Computer Science.* https://doi.org/10.7717/peerj-cs.3050
-
-*(Daftar pustaka lengkap ada di segmen [Daftar Pustaka](#daftar-pustaka) di bagian akhir dokumen ini.)*
-
 ## Research Questions
 
 1. Bagaimana titik koordinat tangan hasil ekstraksi MediaPipe pada foto SIBI statis diubah menjadi graf yang bisa diproses GCN, menggantikan pendekatan CNN berbasis piksel mentah?
@@ -347,7 +328,7 @@ sibi-translation/
 ## Author & Hak Cipta
 
 - **Penulis:** Defrizal Yahdiyan Risyad (NIM 2206131)
-- **Program Studi:** Ilmu Komputer, Fakultas Pendidikan Matematika dan Ilmu Pengetahuan Alam
+- **Program Studi:** S1 Ilmu Komputer, Fakultas Pendidikan Matematika dan Ilmu Pengetahuan Alam
 - **Institusi:** Universitas Pendidikan Indonesia (UPI), Bandung, 2026
 - **Pembimbing I:** Dr. Eddy Prasetyo Nugroho, M.T.
 - **Pembimbing II:** Rizky Rachman J., M.T.
