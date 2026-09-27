@@ -1,5 +1,6 @@
 # SIBI Translator Backend
 
+
 Backend ini adalah **otak inferensi** dari sistem SIBI Translator bagian yang
 menerima data landmark tangan, menjalankan model GCN, lalu mengembalikan huruf
 hasil prediksi ke frontend secara real-time.
@@ -51,7 +52,6 @@ kembali ke pengguna di frontend (dan opsional dipicu ke purwarupa IoT ESP32).
 
 | Kategori | Teknologi |
 |---|---|
-
 | Framework API | FastAPI + Uvicorn |
 | Deep Learning | PyTorch, PyTorch Geometric |
 | Database | PostgreSQL + SQLAlchemy |
