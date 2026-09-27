@@ -222,6 +222,8 @@ sibi-translation/
 │   ├── vite.config.ts       # Konfigurasi bundler Vite
 │   └── README.md            # Dokumentasi khusus frontend
 │
+├── iot/                     # Layanan IOT untuk komunikasi dua arah (purwarupa ESP32)
+|
 ├── models/                  # Bobot model terlatih
 │   └── sibi_gcn_model_standalone.pt   # Model GCN hasil export untuk deployment
 │
