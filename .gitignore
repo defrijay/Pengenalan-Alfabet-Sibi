@@ -1,0 +1,29 @@
+# ===== Python / Backend =====
+backend/venv/
+backend/.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ===== Dataset & artefak berat =====
+data/
+notebook/output/
+
+# ===== Environment & rahasia =====
+.env
+.env.local
+
+# ===== OS & Editor junk =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ===== Docker (opsional, biasanya tidak perlu di-ignore) =====
+# docker-compose.override.yml

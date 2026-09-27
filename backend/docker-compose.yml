@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sibi_user
+      POSTGRES_PASSWORD: sibi_pass
+      POSTGRES_DB: sibi_translator
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://sibi_user:sibi_pass@db:5432/sibi_translator
+      MODEL_PATH: app/models/artifacts/sibi_gcn_model_standalone.pt
+      DEVICE: cpu
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
