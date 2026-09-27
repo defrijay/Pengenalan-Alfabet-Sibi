@@ -13,7 +13,7 @@ Proyek skripsi ini membangun dan membandingkan dua pendekatan untuk mengenali 24
 ## Daftar Isi
 
 - [Latar Belakang](#latar-belakang)
-- [Research Questions](#research-questions)
+- [Pertanyaan Penelitian](#pertanyaan-penelitian)
 - [Dataset](#dataset)
 - [Metodologi](#metodologi)
 - [Teori Dasar](#teori-dasar)
@@ -31,7 +31,7 @@ Penyandang tunarungu dan tunawicara di Indonesia bergantung pada SIBI untuk berk
 
 Tangan manusia pada dasarnya adalah jaringan sendi yang saling terhubung, mirip struktur graf, bukan sekadar kumpulan piksel. Graph Convolutional Network (GCN) dirancang untuk data berbentuk graf (Kipf & Welling, 2017; Yan et al., 2018) sehingga berpotensi menangkap hubungan geometris antar sendi, informasi penting untuk membedakan huruf yang bentuknya mirip (mis. M vs N, A vs S), dengan cara yang tidak dimiliki CNN berbasis piksel (Liu et al., 2025; Han et al., 2024). Namun belum ada riset lokal yang menguji langsung keunggulan representasi graf dibanding piksel pada huruf SIBI yang mirip, maupun kesiapan model GCN ringan dijalankan sebagai layanan cloud (You, 2025; Naayini, 2025) dan diintegrasikan dengan perangkat edge seperti ESP32 untuk komunikasi dua arah secara real-time (Yalabaka et al., 2024).
 
-## Research Questions
+## Pertanyaan Penelitian
 
 1. Bagaimana titik koordinat tangan hasil ekstraksi MediaPipe pada foto SIBI statis diubah menjadi graf yang bisa diproses GCN, menggantikan pendekatan CNN berbasis piksel mentah?
 2. Seberapa besar pengaruh keberhasilan deteksi titik tangan oleh MediaPipe (pada latar belakang rumit dan pencahayaan tidak stabil) terhadap akurasi pengenalan huruf SIBI, dan bagaimana perbandingan akurasi GCN dengan CNN pada kondisi tersebut?
