@@ -33,6 +33,16 @@ class PredictResponse(BaseModel):
     translation_id: int
 
 
+class LatestPredictionResponse(BaseModel):
+    """Hasil deteksi translasi paling mutakhir untuk dikonsumsi modul IoT (ESP32)."""
+
+    translation_id: int | None = None
+    predicted_class: str | None = None
+    confidence: float | None = None
+    created_at: datetime | None = None
+
+
+
 # ---------- Sessions ----------
 
 class SessionStartResponse(BaseModel):

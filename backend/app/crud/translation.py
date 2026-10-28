@@ -70,6 +70,17 @@ def get_active_model(db: DBSession) -> models.ModelRegistry | None:
     )
 
 
+def get_latest_translation(
+    db: DBSession, session_id: uuid.UUID | None = None
+) -> models.Translation | None:
+    """Mengambil record prediksi translasi paling baru (digunakan oleh ESP32 atau polling client)."""
+    query = db.query(models.Translation)
+    if session_id:
+        query = query.filter(models.Translation.session_id == session_id)
+    return query.order_by(models.Translation.created_at.desc()).first()
+
+
+
 def save_feedback(
     db: DBSession, translation_id: int, is_correct: bool, corrected_label: str | None
 ) -> models.Feedback:

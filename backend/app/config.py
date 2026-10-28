@@ -4,7 +4,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Konfigurasi aplikasi, dibaca dari environment variable / file .env."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        protected_namespaces=("settings_",),
+    )
 
     app_name: str = "SIBI Translator API"
     environment: str = "development"
@@ -15,6 +19,14 @@ class Settings(BaseSettings):
     device: str = "cpu"
 
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    @property
+    def sync_database_url(self) -> str:
+        """Menjamin kompatibilitas URL PostgreSQL di cloud (mis. Railway menyediakan 'postgres://')."""
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.inference_service import predict
 from app.core.model_loader import ModelBundle, get_model
 from app.crud import translation as crud
 from app.db.database import get_db
-from app.db.schemas import FeedbackRequest, PredictRequest, PredictResponse
+from app.db.schemas import (
+    FeedbackRequest,
+    LatestPredictionResponse,
+    PredictRequest,
+    PredictResponse,
+)
 
 router = APIRouter(tags=["inference"])
 
@@ -44,6 +51,30 @@ def predict_sign(
         top_k=top_k,
         translation_id=log.id,
     )
+
+
+@router.get("/latest", response_model=LatestPredictionResponse)
+@router.get("/predict/latest", response_model=LatestPredictionResponse)
+def get_latest_sign(
+    session_id: uuid.UUID | None = Query(None, description="Filter opsional per session"),
+    db: DBSession = Depends(get_db),
+):
+    """
+    Endpoint polling untuk perangkat edge / IoT (ESP32).
+    Mengembalikan huruf prediksi paling mutakhir agar ESP32 dapat membunyikan speaker
+    dan mengaktifkan motor getar haptik tanpa perlu menjalankan model di mikrokontroler.
+    """
+    latest = crud.get_latest_translation(db, session_id=session_id)
+    if not latest:
+        return LatestPredictionResponse()
+
+    return LatestPredictionResponse(
+        translation_id=latest.id,
+        predicted_class=latest.predicted_class,
+        confidence=latest.confidence,
+        created_at=latest.created_at,
+    )
+
 
 
 @router.post("/feedback")
