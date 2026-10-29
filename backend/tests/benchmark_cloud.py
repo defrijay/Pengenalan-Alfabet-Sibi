@@ -168,15 +168,27 @@ async def main():
     print(f"BENCHMARK CLOUD DEPLOYMENT SIBI GCN: {base_url}")
     print("=" * 65)
 
+    # Check health and start valid session
     try:
-        # Check health
         async with httpx.AsyncClient() as c:
-            h = await c.get(f"{base_url}/health", timeout=5.0)
+            h = await c.get(f"{base_url}/health", timeout=10.0)
             if h.status_code != 200:
                 print(f"[!] Warning: /health returned {h.status_code}")
+
+            s_resp = await c.post(
+                f"{base_url}/sessions/start",
+                json={"device_info": "benchmark_cloud_test"},
+                timeout=10.0,
+            )
+            if s_resp.status_code == 200:
+                test_session_id = s_resp.json()["session_id"]
+                print(f"[OK] Sesi pengujian dibuat: {test_session_id}")
+            else:
+                test_session_id = str(uuid.uuid4())
+                print(f"[!] Info: Sesi via API status {s_resp.status_code}, fallback UUID")
     except Exception as e:
         print(f"[ERROR] Tidak dapat terhubung ke server {base_url}: {e}")
-        print("Pastikan backend FastAPI sudah berjalan (`uvicorn app.main:app --port 8000`).")
+        print("Pastikan backend FastAPI sudah berjalan.")
         sys.exit(1)
 
     # 1. Single Request Latency
