@@ -30,26 +30,30 @@ def predict_sign(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    active_model = crud.get_active_model(db)
-
-    log = crud.log_translation(
-        db,
-        session_id=payload.session_id,
-        predicted_class=pred_letter,
-        confidence=confidence,
-        model_version_id=active_model.id if active_model else None,
-        fps=payload.fps,
-        latency_ms=payload.latency_ms,
-        memory_mb=payload.memory_mb,
-        lux=payload.lux,
-        hand_scale=payload.hand_scale,
-    )
+    translation_id = 0
+    try:
+        active_model = crud.get_active_model(db)
+        log = crud.log_translation(
+            db,
+            session_id=payload.session_id,
+            predicted_class=pred_letter,
+            confidence=confidence,
+            model_version_id=active_model.id if active_model else None,
+            fps=payload.fps,
+            latency_ms=payload.latency_ms,
+            memory_mb=payload.memory_mb,
+            lux=payload.lux,
+            hand_scale=payload.hand_scale,
+        )
+        translation_id = log.id
+    except Exception as e:
+        print(f"[Warning] Gagal log translation ke DB: {e}")
 
     return PredictResponse(
         predicted_class=pred_letter,
         confidence=confidence,
         top_k=top_k,
-        translation_id=log.id,
+        translation_id=translation_id,
     )
 
 

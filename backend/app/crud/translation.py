@@ -44,6 +44,13 @@ def log_translation(
     lux: int | None = None,
     hand_scale: str | None = None,
 ) -> models.Translation:
+    # Jamin session_id sudah terdaftar agar tidak terjadi pelanggaran Foreign Key
+    session = db.query(models.Session).filter(models.Session.id == session_id).first()
+    if not session:
+        session = models.Session(id=session_id, device_info="auto_created_on_predict")
+        db.add(session)
+        db.commit()
+
     translation = models.Translation(
         session_id=session_id,
         model_version_id=model_version_id,

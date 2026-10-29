@@ -72,7 +72,10 @@ export const App: React.FC = () => {
                 .then((data) => {
                     if (!isCancelled) setSessionId(data.session_id);
                 })
-                .catch((err) => console.error('Gagal memulai sesi:', err));
+                .catch((err) => {
+                    console.error('Gagal memulai sesi di server, memakai session ID lokal:', err);
+                    if (!isCancelled) setSessionId(crypto.randomUUID());
+                });
         } else if (sessionId) {
             endSessionApi(sessionId).catch((err) => console.error('Gagal mengakhiri sesi:', err));
             setSessionId(null);
