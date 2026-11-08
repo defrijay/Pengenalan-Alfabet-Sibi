@@ -10,6 +10,7 @@ import type {
     SessionStartResponse,
     SessionEndResponse,
     LatestPredictionResponse,
+    MonitoringStatsResponse,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -91,6 +92,38 @@ export async function submitFeedbackApi(
     });
     if (!res.ok) {
         throw new Error(`Gagal menyimpan feedback: HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+/**
+ * Mengambil riwayat log inferensi beserta statistik ringkasan untuk Monitoring Pengujian Cloud (RM4).
+ */
+export async function getMonitoringLogsApi(
+    sessionId?: string,
+    limit: number = 100
+): Promise<MonitoringStatsResponse> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (sessionId) params.set('session_id', sessionId);
+    const res = await fetch(`${API_BASE_URL}/logs?${params.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Gagal memuat log monitoring: HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+/**
+ * Menghapus riwayat log pengujian di database.
+ */
+export async function clearMonitoringLogsApi(
+    sessionId?: string
+): Promise<{ status: string; deleted_count: number }> {
+    const url = sessionId
+        ? `${API_BASE_URL}/logs?session_id=${sessionId}`
+        : `${API_BASE_URL}/logs`;
+    const res = await fetch(url, { method: 'DELETE' });
+    if (!res.ok) {
+        throw new Error(`Gagal menghapus log monitoring: HTTP ${res.status}`);
     }
     return res.json();
 }

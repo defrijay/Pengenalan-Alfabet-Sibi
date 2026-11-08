@@ -38,6 +38,33 @@ export interface PredictResponse {
     confidence: number;
     top_k: Array<[string, number]>;
     translation_id: number;
+    inference_ms?: number | null;
+    server_memory_mb?: number | null;
+}
+
+export interface TranslationLogItem {
+    id: number;
+    session_id: string;
+    predicted_class: string;
+    confidence: number;
+    latency_ms?: number | null;
+    fps?: number | null;
+    memory_mb?: number | null;
+    lux?: number | null;
+    hand_scale?: string | null;
+    created_at: string;
+    is_correct?: boolean | null;
+    corrected_label?: string | null;
+}
+
+export interface MonitoringStatsResponse {
+    total_logs: number;
+    avg_latency_ms: number;
+    p50_latency_ms: number;
+    p95_latency_ms: number;
+    avg_confidence: number;
+    server_memory_mb: number;
+    logs: TranslationLogItem[];
 }
 
 export interface LatestPredictionResponse {

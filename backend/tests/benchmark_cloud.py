@@ -50,7 +50,7 @@ async def send_predict_request(client: httpx.AsyncClient, base_url: str, session
 
 
 async def run_single_request_benchmark(base_url: str, session_id: str, num_requests: int = 50):
-    print(f"\n[1/3] Menjalankan Benchmark Permintaan Tunggal ({num_requests} requests sequential)...")
+    print(f"\n[1/3] Menjalankan Benchmark Permintaan Tunggal ({num_requests} requests sequential)...", flush=True)
     latencies = []
     successes = 0
 
@@ -58,11 +58,13 @@ async def run_single_request_benchmark(base_url: str, session_id: str, num_reque
         # Warmup
         await send_predict_request(client, base_url, session_id)
 
-        for _ in range(num_requests):
+        for i in range(num_requests):
             ok, lat = await send_predict_request(client, base_url, session_id)
             if ok:
                 successes += 1
                 latencies.append(lat)
+            if (i + 1) % 10 == 0:
+                print(f"  > Selesai {i + 1}/{num_requests} request...", flush=True)
             await asyncio.sleep(0.02)
 
     lat_arr = np.array(latencies) if latencies else np.array([0.0])
@@ -88,7 +90,7 @@ async def run_single_request_benchmark(base_url: str, session_id: str, num_reque
 
 
 async def run_concurrency_tier(base_url: str, session_id: str, concurrency: int, total_requests: int):
-    print(f"  - Menguji Concurrency = {concurrency} (total {total_requests} requests)...")
+    print(f"  - Menguji Concurrency = {concurrency} (total {total_requests} requests)...", flush=True)
     latencies = []
     success_count = 0
     failure_count = 0

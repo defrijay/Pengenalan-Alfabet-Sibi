@@ -5,18 +5,24 @@
  */
 
 import React from 'react';
-import { Hand, Sun, Moon } from 'lucide-react';
+import { Hand, Sun, Moon, Video, BarChart3 } from 'lucide-react';
+
+export type ActiveTabType = 'translator' | 'monitoring';
 
 interface HeaderProps {
     isCameraActive: boolean;
     isDarkMode: boolean;
     onToggleDarkMode: () => void;
+    activeTab: ActiveTabType;
+    onTabChange: (tab: ActiveTabType) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
     isCameraActive,
     isDarkMode,
     onToggleDarkMode,
+    activeTab,
+    onTabChange,
 }) => {
     return (
         <header className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 gap-4 sm:gap-0 transition-all duration-300">
@@ -35,7 +41,33 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                {/* Navigasi Tab: Kamera Translasi vs Log Pengujian Cloud */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-900/70 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
+                    <button
+                        onClick={() => onTabChange('translator')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            activeTab === 'translator'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        }`}
+                    >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>Translasi Live</span>
+                    </button>
+                    <button
+                        onClick={() => onTabChange('monitoring')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            activeTab === 'monitoring'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        }`}
+                    >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>Log &amp; Uji Cloud (RM4)</span>
+                    </button>
+                </div>
+
                 {/* Status Badge */}
                 <div
                     className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${

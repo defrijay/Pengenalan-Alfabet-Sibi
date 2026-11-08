@@ -6,11 +6,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Header } from './components/Header';
+import { Header, type ActiveTabType } from './components/Header';
 import { CameraFeed } from './components/CameraFeed';
 import { QuickControls } from './components/QuickControls';
 import { TranslationCard } from './components/TranslationCard';
 import { HistoryCard } from './components/HistoryCard';
+import { CloudMonitoringView } from './components/CloudMonitoringView';
 import { useCamera } from './hooks/useCamera';
 import { useMediaPipeHands } from './hooks/useMediaPipeHands';
 import { useSpeechSynthesis } from './hooks/useSpeechSynthesis';
@@ -24,6 +25,7 @@ export const App: React.FC = () => {
     const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     });
+    const [activeTab, setActiveTab] = useState<ActiveTabType>('translator');
     const [currentSign, setCurrentSign] = useState<string>('Menunggu...');
     const [translationHistory, setTranslationHistory] = useState<string>('');
     const [confidence, setConfidence] = useState<number>(0.85);
@@ -91,6 +93,7 @@ export const App: React.FC = () => {
         if (!sessionId || !activeLandmarksRef.current || isPredictingRef.current) return;
 
         isPredictingRef.current = true;
+        const reqStart = window.performance.now();
         try {
             const data = await predictSignApi({
                 session_id: sessionId,
@@ -101,10 +104,16 @@ export const App: React.FC = () => {
                 lux: spatial.lux,
                 hand_scale: spatial.handScale,
             });
+            const rttMs = Math.max(1, Math.round(window.performance.now() - reqStart));
 
             setCurrentSign(data.predicted_class);
             setConfidence(data.confidence);
             setTranslationHistory((prev) => prev + data.predicted_class);
+            setPerformance((prev) => ({
+                ...prev,
+                latency: rttMs,
+                memory: data.server_memory_mb ? Math.round(data.server_memory_mb) : prev.memory,
+            }));
         } catch (err) {
             console.error('Inference error:', err);
         } finally {
@@ -164,42 +173,50 @@ export const App: React.FC = () => {
                         isCameraActive={isCameraActive}
                         isDarkMode={isDarkMode}
                         onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+                        activeTab={activeTab}
+                        onTabChange={setActiveTab}
                     />
 
-                    {/* Main Layout Grid */}
-                    <main className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                        {/* Sisi Kiri: Video Feed & Kontrol Kamera (Lebar 3/4) */}
-                        <section className="lg:col-span-3 flex flex-col gap-4 h-full">
-                            <CameraFeed
-                                videoRef={videoRef}
-                                isCameraActive={isCameraActive}
-                                isHandInArea={isHandInArea}
-                                currentSign={currentSign}
-                                confidence={confidence}
-                                performance={performance}
-                                spatial={spatial}
-                            />
-                            <QuickControls
-                                isCameraActive={isCameraActive}
-                                onToggleCamera={toggleCamera}
-                            />
-                        </section>
+                    {/* Main Layout: Tab Translasi Live vs Tab Monitoring Pengujian Cloud */}
+                    {activeTab === 'translator' ? (
+                        <main className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+                            {/* Sisi Kiri: Video Feed & Kontrol Kamera (Lebar 3/4) */}
+                            <section className="lg:col-span-3 flex flex-col gap-4 h-full">
+                                <CameraFeed
+                                    videoRef={videoRef}
+                                    isCameraActive={isCameraActive}
+                                    isHandInArea={isHandInArea}
+                                    currentSign={currentSign}
+                                    confidence={confidence}
+                                    performance={performance}
+                                    spatial={spatial}
+                                />
+                                <QuickControls
+                                    isCameraActive={isCameraActive}
+                                    onToggleCamera={toggleCamera}
+                                />
+                            </section>
 
-                        {/* Sisi Kanan: Hasil Deteksi & Riwayat Kalimat (Lebar 1/4) */}
-                        <aside className="lg:col-span-1 flex flex-col gap-4 sm:gap-6 h-full">
-                            <TranslationCard
-                                currentSign={currentSign}
-                                isHandInArea={isHandInArea}
-                                isCameraActive={isCameraActive}
-                            />
-                            <HistoryCard
-                                translationHistory={translationHistory}
-                                onHistoryChange={setTranslationHistory}
-                                onClearHistory={() => setTranslationHistory('')}
-                                onSpeakText={() => speak(translationHistory)}
-                            />
-                        </aside>
-                    </main>
+                            {/* Sisi Kanan: Hasil Deteksi & Riwayat Kalimat (Lebar 1/4) */}
+                            <aside className="lg:col-span-1 flex flex-col gap-4 sm:gap-6 h-full">
+                                <TranslationCard
+                                    currentSign={currentSign}
+                                    isHandInArea={isHandInArea}
+                                    isCameraActive={isCameraActive}
+                                />
+                                <HistoryCard
+                                    translationHistory={translationHistory}
+                                    onHistoryChange={setTranslationHistory}
+                                    onClearHistory={() => setTranslationHistory('')}
+                                    onSpeakText={() => speak(translationHistory)}
+                                />
+                            </aside>
+                        </main>
+                    ) : (
+                        <main className="flex-grow flex flex-col">
+                            <CloudMonitoringView currentSessionId={sessionId} />
+                        </main>
+                    )}
                 </div>
             </div>
         </div>

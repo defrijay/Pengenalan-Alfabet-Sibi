@@ -91,6 +91,18 @@ def get_latest_translation(
 def save_feedback(
     db: DBSession, translation_id: int, is_correct: bool, corrected_label: str | None
 ) -> models.Feedback:
+    existing = (
+        db.query(models.Feedback)
+        .filter(models.Feedback.translation_id == translation_id)
+        .first()
+    )
+    if existing:
+        existing.is_correct = is_correct
+        existing.corrected_label = corrected_label
+        db.commit()
+        db.refresh(existing)
+        return existing
+
     feedback = models.Feedback(
         translation_id=translation_id,
         is_correct=is_correct,
@@ -100,3 +112,23 @@ def save_feedback(
     db.commit()
     db.refresh(feedback)
     return feedback
+
+
+def get_translation_logs(
+    db: DBSession, session_id: uuid.UUID | None = None, limit: int = 100
+) -> list[models.Translation]:
+    query = db.query(models.Translation)
+    if session_id:
+        query = query.filter(models.Translation.session_id == session_id)
+    return query.order_by(models.Translation.created_at.desc()).limit(limit).all()
+
+
+def clear_translation_logs(
+    db: DBSession, session_id: uuid.UUID | None = None
+) -> int:
+    query = db.query(models.Translation)
+    if session_id:
+        query = query.filter(models.Translation.session_id == session_id)
+    deleted = query.delete(synchronize_session=False)
+    db.commit()
+    return deleted

@@ -31,6 +31,33 @@ class PredictResponse(BaseModel):
     confidence: float
     top_k: list[tuple[str, float]]
     translation_id: int
+    inference_ms: float | None = None
+    server_memory_mb: float | None = None
+
+
+class TranslationLogItem(BaseModel):
+    id: int
+    session_id: uuid.UUID
+    predicted_class: str
+    confidence: float
+    latency_ms: int | None = None
+    fps: int | None = None
+    memory_mb: int | None = None
+    lux: int | None = None
+    hand_scale: str | None = None
+    created_at: datetime
+    is_correct: bool | None = None
+    corrected_label: str | None = None
+
+
+class MonitoringStatsResponse(BaseModel):
+    total_logs: int
+    avg_latency_ms: float
+    p50_latency_ms: float
+    p95_latency_ms: float
+    avg_confidence: float
+    server_memory_mb: float
+    logs: list[TranslationLogItem]
 
 
 class LatestPredictionResponse(BaseModel):
