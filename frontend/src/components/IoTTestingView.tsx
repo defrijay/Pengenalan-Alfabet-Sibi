@@ -4,10 +4,10 @@
  *  - Tabel 4.16: Kesesuaian Output Perangkat (Speaker DFPlayer Mini & Motor Getar) dengan Hasil Prediksi
  *  - Tabel 4.17 & 4.18A: Latensi Tambahan End-to-End (Cloud API -> WiFi ESP32 -> Aktuasi Speaker/Motor)
  *  - Tabel 4.18B & 4.18C: Fungsi Sensor Input (Jarak Ultrasonik HC-SR04 & Cahaya LDR + LED Bantu)
- * Dirancang dengan estetika instrumen telemetri perangkat keras (Linear / Vercel Geist / Palantir Foundry).
+ * Dilengkapi manajemen Sesi Pengujian (Sesi #1, Sesi #2, dst.) dan filter per sesi.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Play,
     Copy,
@@ -16,6 +16,8 @@ import {
     RefreshCw,
     Trash2,
     PlusCircle,
+    Layers,
+    Plus,
 } from 'lucide-react';
 import {
     getIoTTelemetryApi,
@@ -23,6 +25,13 @@ import {
     clearIoTTelemetryApi,
 } from '../services/api';
 import type { IoTDashboardResponse } from '../types';
+
+interface IoTSessionMeta {
+    deviceKey: string;
+    sessionNumber: number;
+    label: string;
+    count: number;
+}
 
 export const IoTTestingView: React.FC = () => {
     const [dashboard, setDashboard] = useState<IoTDashboardResponse>({
@@ -40,6 +49,8 @@ export const IoTTestingView: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isSimulating, setIsSimulating] = useState<boolean>(false);
     const [copiedMd, setCopiedMd] = useState<boolean>(false);
+    const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>('ALL');
+    const [manualSessionCounter, setManualSessionCounter] = useState<number>(1);
 
     // State form manual kalibrasi sensor (untuk Tabel 4.18)
     const [actualDistInput, setActualDistInput] = useState<string>('30');
@@ -50,7 +61,7 @@ export const IoTTestingView: React.FC = () => {
     const fetchIoTData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await getIoTTelemetryApi(150);
+            const data = await getIoTTelemetryApi(500);
             setDashboard(data);
         } catch (err) {
             console.error('Gagal mengambil telemetri IoT:', err);
@@ -65,13 +76,115 @@ export const IoTTestingView: React.FC = () => {
         return () => clearInterval(timer);
     }, [fetchIoTData]);
 
-    // Tambah baris pengukuran sensor manual (Tabel 4.18)
+    // Bangun daftar sesi pengujian IoT berdasarkan device_id secara kronologis (Sesi #1, Sesi #2, ...)
+    const iotSessionList = useMemo<IoTSessionMeta[]>(() => {
+        const map = new Map<string, { count: number; earliest: string }>();
+        const chronological = [...dashboard.records].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        for (const r of chronological) {
+            const key = r.device_id || 'ESP32-SIBI-01';
+            const existing = map.get(key);
+            if (!existing) {
+                map.set(key, { count: 1, earliest: r.created_at });
+            } else {
+                existing.count += 1;
+            }
+        }
+
+        const list: IoTSessionMeta[] = [];
+        let idx = 1;
+        for (const [key, info] of map.entries()) {
+            const timeStr = new Date(info.earliest).toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+            const isHardwareDefault = key.toLowerCase() === 'esp32-sibi-01';
+            list.push({
+                deviceKey: key,
+                sessionNumber: idx,
+                label: `Sesi #${idx}${isHardwareDefault ? ' (Default/HW)' : ''} — ${timeStr} (${info.count} data)`,
+                count: info.count,
+            });
+            idx += 1;
+        }
+        return list;
+    }, [dashboard.records]);
+
+    const sessionNumberMap = useMemo<Record<string, number>>(() => {
+        const rec: Record<string, number> = {};
+        for (const s of iotSessionList) {
+            rec[s.deviceKey] = s.sessionNumber;
+        }
+        return rec;
+    }, [iotSessionList]);
+
+    // Tentukan nomor sesi aktif untuk input/simulasi berikutnya
+    const activeSessionNumber = useMemo(() => {
+        return Math.max(iotSessionList.length, manualSessionCounter);
+    }, [iotSessionList.length, manualSessionCounter]);
+
+    // Buat Sesi Uji IoT Baru
+    const handleNewIoTSession = () => {
+        const nextNum = Math.max(iotSessionList.length + 1, manualSessionCounter + 1);
+        setManualSessionCounter(nextNum);
+        setSelectedSessionFilter('ALL');
+    };
+
+    // Filter rekaman berdasarkan dropdown sesi
+    const filteredRecords = useMemo(() => {
+        if (selectedSessionFilter === 'ALL') return dashboard.records;
+        return dashboard.records.filter(
+            (r) => (r.device_id || 'ESP32-SIBI-01') === selectedSessionFilter
+        );
+    }, [dashboard.records, selectedSessionFilter]);
+
+    const actuationRows = useMemo(
+        () => filteredRecords.filter((r) => Boolean(r.predicted_letter)),
+        [filteredRecords]
+    );
+    const distanceRows = useMemo(
+        () => filteredRecords.filter((r) => r.actual_distance_cm != null),
+        [filteredRecords]
+    );
+
+    // Hitung metrik rata-rata secara dinamis sesuai sesi yang dipilih
+    const sessionMetrics = useMemo(() => {
+        if (actuationRows.length === 0) {
+            return {
+                avgApi: 0,
+                avgWifi: 0,
+                avgAct: 0,
+                avgTotal: 0,
+            };
+        }
+        const avgApi =
+            actuationRows.reduce((acc, r) => acc + (r.api_latency_ms || 0), 0) /
+            actuationRows.length;
+        const avgWifi =
+            actuationRows.reduce((acc, r) => acc + (r.wifi_latency_ms || 0), 0) /
+            actuationRows.length;
+        const avgAct =
+            actuationRows.reduce((acc, r) => acc + (r.actuation_latency_ms || 0), 0) /
+            actuationRows.length;
+        const avgTotal =
+            actuationRows.reduce((acc, r) => acc + (r.total_e2e_ms || 0), 0) /
+            actuationRows.length;
+        return { avgApi, avgWifi, avgAct, avgTotal };
+    }, [actuationRows]);
+
+    // Tambah baris pengukuran sensor manual (Tabel 4.18) ke sesi aktif
     const handleAddSensorMeasurement = async (e: React.FormEvent) => {
         e.preventDefault();
         const actCm = parseFloat(actualDistInput);
         const measCm = parseFloat(measuredDistInput);
         const luxVal = parseFloat(luxInput);
         if (isNaN(actCm) || isNaN(measCm) || isNaN(luxVal)) return;
+
+        const targetDeviceKey =
+            selectedSessionFilter !== 'ALL'
+                ? selectedSessionFilter
+                : `ESP32-SIBI-S${Math.max(1, activeSessionNumber)}`;
 
         const inRange = measCm >= 20.0 && measCm <= 60.0;
         const ledInd = inRange
@@ -83,7 +196,7 @@ export const IoTTestingView: React.FC = () => {
 
         try {
             await postIoTTelemetryApi({
-                device_id: 'ESP32-SIBI-01',
+                device_id: targetDeviceKey,
                 actual_distance_cm: actCm,
                 measured_distance_cm: measCm,
                 distance_in_range: inRange,
@@ -98,9 +211,11 @@ export const IoTTestingView: React.FC = () => {
         }
     };
 
-    // Simulasi / Eksekusi Pengujian Fungsional Lengkap Modul IoT (Tabel 4.16, 4.17, 4.18)
+    // Simulasi / Eksekusi Pengujian Fungsional Lengkap Modul IoT (Otomatis membuat Sesi #Baru)
     const handleRunIoTTestSuite = async () => {
         setIsSimulating(true);
+        const newSessionNum = iotSessionList.length + 1;
+        const sessionDeviceTag = `ESP32-SIBI-S${newSessionNum}-${Date.now().toString().slice(-4)}`;
         try {
             const actuationScenarios = [
                 { letter: 'A', conf: 0.96, apiMs: 44, wifiMs: 28, actMs: 14 },
@@ -118,7 +233,7 @@ export const IoTTestingView: React.FC = () => {
             for (const item of actuationScenarios) {
                 const isHigh = item.conf >= 0.7;
                 await postIoTTelemetryApi({
-                    device_id: 'ESP32-SIBI-01',
+                    device_id: sessionDeviceTag,
                     target_letter: item.letter,
                     predicted_letter: item.letter,
                     confidence: item.conf,
@@ -145,7 +260,7 @@ export const IoTTestingView: React.FC = () => {
             for (const s of sensorScenarios) {
                 const inRange = s.measCm >= 20.0 && s.measCm <= 60.0;
                 await postIoTTelemetryApi({
-                    device_id: 'ESP32-SIBI-01',
+                    device_id: sessionDeviceTag,
                     actual_distance_cm: s.actCm,
                     measured_distance_cm: s.measCm,
                     distance_in_range: inRange,
@@ -161,6 +276,8 @@ export const IoTTestingView: React.FC = () => {
             }
 
             await fetchIoTData();
+            setSelectedSessionFilter(sessionDeviceTag);
+            setManualSessionCounter(newSessionNum);
         } catch (err) {
             console.error('Gagal menjalankan uji IoT:', err);
         } finally {
@@ -172,69 +289,73 @@ export const IoTTestingView: React.FC = () => {
         if (!window.confirm('Hapus seluruh riwayat pengujian modul IoT?')) return;
         try {
             await clearIoTTelemetryApi();
+            setSelectedSessionFilter('ALL');
+            setManualSessionCounter(1);
             await fetchIoTData();
         } catch (err) {
             console.error('Gagal menghapus log IoT:', err);
         }
     };
 
-    const actuationRows = dashboard.records.filter((r) => Boolean(r.predicted_letter));
-    const distanceRows = dashboard.records.filter((r) => r.actual_distance_cm != null);
-
-    const totalE2E = dashboard.avg_total_e2e_ms || 1;
-    const apiShare = ((dashboard.avg_api_latency_ms / totalE2E) * 100).toFixed(1);
-    const wifiShare = ((dashboard.avg_wifi_latency_ms / totalE2E) * 100).toFixed(1);
-    const actShare = ((dashboard.avg_actuation_latency_ms / totalE2E) * 100).toFixed(1);
+    const totalE2E = sessionMetrics.avgTotal || 1;
+    const apiShare = ((sessionMetrics.avgApi / totalE2E) * 100).toFixed(1);
+    const wifiShare = ((sessionMetrics.avgWifi / totalE2E) * 100).toFixed(1);
+    const actShare = ((sessionMetrics.avgAct / totalE2E) * 100).toFixed(1);
 
     const handleCopyIoTMarkdown = () => {
+        const sessionLabel =
+            selectedSessionFilter === 'ALL'
+                ? `Seluruh Sesi (${iotSessionList.length} Sesi)`
+                : `Sesi #${sessionNumberMap[selectedSessionFilter] || 1}`;
         const md = [
-            `### Tabel 4.16 Kesesuaian Output Perangkat dengan Hasil Prediksi`,
-            `| No. | Huruf Uji | Huruf Prediksi | Confidence | Output Speaker | Pola Getar Motor | Sesuai? |`,
-            `|---|---|---|---|---|---|---|`,
-            ...actuationRows.map(
-                (r, idx) =>
-                    `| ${idx + 1} | ${r.target_letter || r.predicted_letter || '-'} | ${
-                        r.predicted_letter || '-'
-                    } | ${r.confidence ? (r.confidence * 100).toFixed(1) + '%' : '-'} | ${
-                        r.speaker_output || '-'
-                    } | ${r.vibration_pattern || '-'} | ${r.is_output_matched ? 'Ya' : 'Tidak'} |`
-            ),
+            `### Tabel 4.16 Kesesuaian Output Perangkat dengan Hasil Prediksi (${sessionLabel})`,
+            `| No. | Sesi Uji | Huruf Uji | Huruf Prediksi | Confidence | Output Speaker | Pola Getar Motor | Sesuai? |`,
+            `|---|---|---|---|---|---|---|---|`,
+            ...actuationRows.map((r, idx) => {
+                const sNum = sessionNumberMap[r.device_id || 'ESP32-SIBI-01'] || 1;
+                return `| ${idx + 1} | Sesi #${sNum} | ${r.target_letter || r.predicted_letter || '-'} | ${
+                    r.predicted_letter || '-'
+                } | ${r.confidence ? (r.confidence * 100).toFixed(1) + '%' : '-'} | ${
+                    r.speaker_output || '-'
+                } | ${r.vibration_pattern || '-'} | ${r.is_output_matched ? 'Ya' : 'Tidak'} |`;
+            }),
             ``,
-            `### Tabel 4.17 Rincian Latensi End-to-End per Percobaan`,
-            `| Percobaan | Huruf Uji | Latensi API Inferensi (ms) | Latensi WiFi ESP32 (ms) | Latensi Aktivasi Output (ms) | Total End-to-End (ms) |`,
-            `|---|---|---|---|---|---|`,
-            ...actuationRows.map(
-                (r, idx) =>
-                    `| ${idx + 1} | ${r.target_letter || r.predicted_letter || '-'} | ${
-                        r.api_latency_ms ?? 0
-                    } | ${r.wifi_latency_ms ?? 0} | ${r.actuation_latency_ms ?? 0} | ${
-                        r.total_e2e_ms ?? 0
-                    } |`
-            ),
-            `| **Rata-rata** | - | **${dashboard.avg_api_latency_ms.toFixed(
+            `### Tabel 4.17 Rincian Latensi End-to-End per Percobaan (${sessionLabel})`,
+            `| Percobaan | Sesi Uji | Huruf Uji | Latensi API Inferensi (ms) | Latensi WiFi ESP32 (ms) | Latensi Aktivasi Output (ms) | Total End-to-End (ms) |`,
+            `|---|---|---|---|---|---|---|`,
+            ...actuationRows.map((r, idx) => {
+                const sNum = sessionNumberMap[r.device_id || 'ESP32-SIBI-01'] || 1;
+                return `| ${idx + 1} | Sesi #${sNum} | ${r.target_letter || r.predicted_letter || '-'} | ${
+                    r.api_latency_ms ?? 0
+                } | ${r.wifi_latency_ms ?? 0} | ${r.actuation_latency_ms ?? 0} | ${
+                    r.total_e2e_ms ?? 0
+                } |`;
+            }),
+            `| **Rata-rata** | - | - | **${sessionMetrics.avgApi.toFixed(
                 1
-            )}** | **${dashboard.avg_wifi_latency_ms.toFixed(
+            )}** | **${sessionMetrics.avgWifi.toFixed(
                 1
-            )}** | **${dashboard.avg_actuation_latency_ms.toFixed(
+            )}** | **${sessionMetrics.avgAct.toFixed(
                 1
-            )}** | **${dashboard.avg_total_e2e_ms.toFixed(1)}** |`,
+            )}** | **${sessionMetrics.avgTotal.toFixed(1)}** |`,
             ``,
             `### Tabel 4.18 Ringkasan Perbandingan Latensi End-to-End`,
             `| Komponen | Rata-rata (ms) | Kontribusi (%) |`,
             `|---|---|---|`,
-            `| Latensi API inferensi (cloud) | ${dashboard.avg_api_latency_ms.toFixed(2)} ms | ${apiShare}% |`,
-            `| Latensi jaringan ESP32 (WiFi) | ${dashboard.avg_wifi_latency_ms.toFixed(2)} ms | ${wifiShare}% |`,
-            `| Latensi aktivasi speaker / motor getar | ${dashboard.avg_actuation_latency_ms.toFixed(2)} ms | ${actShare}% |`,
-            `| **Total End-to-End** | **${dashboard.avg_total_e2e_ms.toFixed(2)} ms** | **100%** |`,
+            `| Latensi API inferensi (cloud) | ${sessionMetrics.avgApi.toFixed(2)} ms | ${apiShare}% |`,
+            `| Latensi jaringan ESP32 (WiFi) | ${sessionMetrics.avgWifi.toFixed(2)} ms | ${wifiShare}% |`,
+            `| Latensi aktivasi speaker / motor getar | ${sessionMetrics.avgAct.toFixed(2)} ms | ${actShare}% |`,
+            `| **Total End-to-End** | **${sessionMetrics.avgTotal.toFixed(2)} ms** | **100%** |`,
             ``,
             `### Tabel 4.18 (Sensor Ultrasonik HC-SR04 & Sensor Cahaya LDR)`,
-            `| Pengujian | Jarak Aktual (cm) | Jarak Terbaca Sensor (cm) | Selisih (cm) | Dalam Rentang 20-60 cm? | Respons LED Indikator | Kondisi Cahaya (Lux) | Status LED Bantu |`,
-            `|---|---|---|---|---|---|---|---|`,
+            `| Pengujian | Sesi Uji | Jarak Aktual (cm) | Jarak Terbaca Sensor (cm) | Selisih (cm) | Dalam Rentang 20-60 cm? | Respons LED Indikator | Kondisi Cahaya (Lux) | Status LED Bantu |`,
+            `|---|---|---|---|---|---|---|---|---|`,
             ...distanceRows.map((r, idx) => {
+                const sNum = sessionNumberMap[r.device_id || 'ESP32-SIBI-01'] || 1;
                 const diff = Math.abs(
                     (r.measured_distance_cm || 0) - (r.actual_distance_cm || 0)
                 ).toFixed(1);
-                return `| ${idx + 1} | ${r.actual_distance_cm} cm | ${
+                return `| ${idx + 1} | Sesi #${sNum} | ${r.actual_distance_cm} cm | ${
                     r.measured_distance_cm
                 } cm | ${diff} cm | ${r.distance_in_range ? 'Ya' : 'Tidak'} | ${
                     r.led_indicator_status || '-'
@@ -250,9 +371,10 @@ export const IoTTestingView: React.FC = () => {
     };
 
     const handleExportIoTCsv = () => {
-        if (dashboard.records.length === 0) return;
+        if (filteredRecords.length === 0) return;
         const headers = [
             'ID',
+            'Sesi_Ke',
             'Waktu',
             'Kategori',
             'Huruf_Uji',
@@ -270,8 +392,9 @@ export const IoTTestingView: React.FC = () => {
             'Lux',
             'Status_LED_Bantu',
         ];
-        const rows = dashboard.records.map((r) => [
+        const rows = filteredRecords.map((r) => [
             r.id,
+            `Sesi #${sessionNumberMap[r.device_id || 'ESP32-SIBI-01'] || 1}`,
             new Date(r.created_at).toISOString(),
             r.predicted_letter ? 'actuation' : 'sensor',
             r.target_letter || '-',
@@ -309,6 +432,9 @@ export const IoTTestingView: React.FC = () => {
                         <span className="px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-700">
                             BAB IV — TABEL 4.16, 4.17 &amp; 4.18
                         </span>
+                        <span className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                            TOTAL SESI IOT: {iotSessionList.length} SESI
+                        </span>
                         <span
                             className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium rounded border ${
                                 dashboard.esp32_online
@@ -328,7 +454,8 @@ export const IoTTestingView: React.FC = () => {
                         Pengujian Fungsional Purwarupa Modul IoT (ESP32)
                     </h2>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        Telemetri keluaran Speaker DFPlayer Mini, Motor Getar Haptik, Latensi End-to-End, Sensor Ultrasonik HC-SR04, dan Sensor Cahaya LDR.
+                        Setiap eksekusi skenario uji maupun kalibrasi sensor dikelompokkan berdasarkan nomor{' '}
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300">Sesi #1, Sesi #2, dst.</span>
                     </p>
                 </div>
 
@@ -340,13 +467,24 @@ export const IoTTestingView: React.FC = () => {
                     >
                         <Play className="w-3.5 h-3.5" />
                         <span>
-                            {isSimulating ? 'Merekam Uji IoT...' : 'Rekam Skenario Uji IoT (Tabel 4.16–4.18)'}
+                            {isSimulating
+                                ? 'Merekam Uji IoT...'
+                                : `Rekam Skenario Uji IoT (Sesi #${iotSessionList.length + 1})`}
                         </span>
                     </button>
 
                     <button
+                        onClick={handleNewIoTSession}
+                        className="px-3 py-2 rounded-md text-xs font-medium bg-zinc-100/80 dark:bg-[#18181B] hover:bg-zinc-200/70 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 cursor-pointer transition-colors"
+                        title="Mulai Nomor Sesi Kalibrasi Baru"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Sesi Baru (#{activeSessionNumber + 1})</span>
+                    </button>
+
+                    <button
                         onClick={handleCopyIoTMarkdown}
-                        disabled={dashboard.records.length === 0}
+                        disabled={filteredRecords.length === 0}
                         className="px-3 py-2 rounded-md text-xs font-medium bg-zinc-100/80 dark:bg-[#18181B] hover:bg-zinc-200/70 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
                     >
                         {copiedMd ? (
@@ -364,7 +502,7 @@ export const IoTTestingView: React.FC = () => {
 
                     <button
                         onClick={handleExportIoTCsv}
-                        disabled={dashboard.records.length === 0}
+                        disabled={filteredRecords.length === 0}
                         className="px-3 py-2 rounded-md text-xs font-medium bg-zinc-100/80 dark:bg-[#18181B] hover:bg-zinc-200/70 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
                     >
                         <Download className="w-3.5 h-3.5" />
@@ -386,6 +524,39 @@ export const IoTTestingView: React.FC = () => {
                     >
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
+                </div>
+            </div>
+
+            {/* Bar Filter Sesi Pengujian IoT */}
+            <div className="bg-white dark:bg-[#111113] px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    <Layers className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>
+                        Menampilkan data untuk:{' '}
+                        <strong className="font-mono text-zinc-900 dark:text-zinc-100">
+                            {selectedSessionFilter === 'ALL'
+                                ? `Semua Sesi (${iotSessionList.length} Sesi)`
+                                : `Sesi #${sessionNumberMap[selectedSessionFilter] || 1}`}
+                        </strong>
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                        Pilih Sesi Uji IoT:
+                    </span>
+                    <select
+                        value={selectedSessionFilter}
+                        onChange={(e) => setSelectedSessionFilter(e.target.value)}
+                        className="bg-zinc-100/80 dark:bg-[#18181B] border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none cursor-pointer w-full sm:w-auto"
+                    >
+                        <option value="ALL">Semua Sesi ({dashboard.records.length} rekaman)</option>
+                        {iotSessionList.map((s) => (
+                            <option key={s.deviceKey} value={s.deviceKey}>
+                                {s.label}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -437,11 +608,11 @@ export const IoTTestingView: React.FC = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500" />
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
-                        {(dashboard.avg_wifi_latency_ms + dashboard.avg_actuation_latency_ms).toFixed(1)}
+                        {(sessionMetrics.avgWifi + sessionMetrics.avgAct).toFixed(1)}
                         <span className="text-xs font-normal text-zinc-400 ml-1">ms</span>
                     </p>
                     <p className="text-[11px] font-mono tabular-nums text-zinc-400 dark:text-zinc-500 mt-1">
-                        WiFi {dashboard.avg_wifi_latency_ms.toFixed(1)}ms | Akt {dashboard.avg_actuation_latency_ms.toFixed(1)}ms
+                        WiFi {sessionMetrics.avgWifi.toFixed(1)}ms | Akt {sessionMetrics.avgAct.toFixed(1)}ms
                     </p>
                 </div>
 
@@ -453,7 +624,7 @@ export const IoTTestingView: React.FC = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
-                        {dashboard.avg_total_e2e_ms.toFixed(1)}
+                        {sessionMetrics.avgTotal.toFixed(1)}
                         <span className="text-xs font-normal text-zinc-400 ml-1">ms</span>
                     </p>
                     <p className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 mt-1">
@@ -481,23 +652,23 @@ export const IoTTestingView: React.FC = () => {
                             <tbody className="divide-y divide-zinc-200/70 dark:divide-zinc-800 font-mono tabular-nums text-zinc-700 dark:text-zinc-200">
                                 <tr>
                                     <td className="py-2.5 px-3 font-sans">Latensi API Inferensi (Cloud)</td>
-                                    <td className="py-2.5 px-3 text-right">{dashboard.avg_api_latency_ms.toFixed(2)} ms</td>
+                                    <td className="py-2.5 px-3 text-right">{sessionMetrics.avgApi.toFixed(2)} ms</td>
                                     <td className="py-2.5 px-3 text-right">{apiShare}%</td>
                                 </tr>
                                 <tr>
                                     <td className="py-2.5 px-3 font-sans">Latensi Jaringan ESP32 (WiFi Polling)</td>
-                                    <td className="py-2.5 px-3 text-right">{dashboard.avg_wifi_latency_ms.toFixed(2)} ms</td>
+                                    <td className="py-2.5 px-3 text-right">{sessionMetrics.avgWifi.toFixed(2)} ms</td>
                                     <td className="py-2.5 px-3 text-right">{wifiShare}%</td>
                                 </tr>
                                 <tr>
                                     <td className="py-2.5 px-3 font-sans">Latensi Aktivasi Speaker / Motor Getar</td>
-                                    <td className="py-2.5 px-3 text-right">{dashboard.avg_actuation_latency_ms.toFixed(2)} ms</td>
+                                    <td className="py-2.5 px-3 text-right">{sessionMetrics.avgAct.toFixed(2)} ms</td>
                                     <td className="py-2.5 px-3 text-right">{actShare}%</td>
                                 </tr>
                                 <tr className="font-semibold bg-zinc-50/80 dark:bg-[#18181B]">
                                     <td className="py-2.5 px-3 font-sans">Total End-to-End</td>
                                     <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400">
-                                        {dashboard.avg_total_e2e_ms.toFixed(2)} ms
+                                        {sessionMetrics.avgTotal.toFixed(2)} ms
                                     </td>
                                     <td className="py-2.5 px-3 text-right">100.0%</td>
                                 </tr>
@@ -509,10 +680,15 @@ export const IoTTestingView: React.FC = () => {
                 {/* Form Pencatatan Kalibrasi Sensor Jarak & Cahaya (Tabel 4.18) */}
                 <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col justify-between">
                     <div>
-                        <h3 className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1.5">
-                            <PlusCircle className="w-3.5 h-3.5" />
-                            <span>Input Kalibrasi Sensor Fisik (Tabel 4.18)</span>
-                        </h3>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                                <PlusCircle className="w-3.5 h-3.5" />
+                                <span>Input Kalibrasi Sensor Fisik (Tabel 4.18)</span>
+                            </h3>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                Target: Sesi #{selectedSessionFilter !== 'ALL' ? sessionNumberMap[selectedSessionFilter] || 1 : Math.max(1, activeSessionNumber)}
+                            </span>
+                        </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
                             Catat perbandingan jarak penggaris aktual terhadap pembacaan ultrasonik HC-SR04 serta intensitas Lux LDR.
                         </p>
@@ -593,6 +769,7 @@ export const IoTTestingView: React.FC = () => {
                         <thead className="bg-zinc-50 dark:bg-[#18181B] border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 sticky top-0 z-10">
                             <tr>
                                 <th className="py-2.5 px-3 font-medium">No</th>
+                                <th className="py-2.5 px-3 font-medium">Sesi Uji</th>
                                 <th className="py-2.5 px-3 font-medium">Huruf Uji</th>
                                 <th className="py-2.5 px-3 font-medium">Prediksi</th>
                                 <th className="py-2.5 px-3 font-medium text-right">Confidence</th>
@@ -606,55 +783,63 @@ export const IoTTestingView: React.FC = () => {
                         <tbody className="divide-y divide-zinc-200/70 dark:divide-zinc-800">
                             {actuationRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="py-8 text-center text-zinc-400 dark:text-zinc-500 font-mono text-xs">
+                                    <td colSpan={10} className="py-8 text-center text-zinc-400 dark:text-zinc-500 font-mono text-xs">
                                         Belum ada data aktuasi IoT. Klik tombol &quot;Rekam Skenario Uji IoT&quot; di atas atau nyalakan ESP32.
                                     </td>
                                 </tr>
                             ) : (
-                                actuationRows.map((r, idx) => (
-                                    <tr
-                                        key={r.id}
-                                        className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 text-zinc-700 dark:text-zinc-200 transition-colors"
-                                    >
-                                        <td className="py-2 px-3 font-mono tabular-nums text-zinc-400 dark:text-zinc-500">
-                                            {idx + 1}
-                                        </td>
-                                        <td className="py-2 px-3 font-mono font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {r.target_letter || r.predicted_letter}
-                                        </td>
-                                        <td className="py-2 px-3">
-                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-mono font-semibold text-xs text-zinc-900 dark:text-zinc-100">
-                                                {r.predicted_letter}
-                                            </span>
-                                        </td>
-                                        <td className="py-2 px-3 font-mono tabular-nums text-right">
-                                            {r.confidence != null ? `${(r.confidence * 100).toFixed(1)}%` : '-'}
-                                        </td>
-                                        <td className="py-2 px-3 font-mono text-zinc-600 dark:text-zinc-300">
-                                            {r.speaker_output || '-'}
-                                        </td>
-                                        <td className="py-2 px-3">
-                                            <span
-                                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono border ${
-                                                    (r.confidence ?? 0) >= 0.7
-                                                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
-                                                        : 'bg-amber-50/70 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
-                                                }`}
-                                            >
-                                                {r.vibration_pattern || '-'}
-                                            </span>
-                                        </td>
-                                        <td className="py-2 px-3 font-mono tabular-nums text-right text-zinc-500 dark:text-zinc-400">
-                                            {r.api_latency_ms ?? 0} / {r.wifi_latency_ms ?? 0} / {r.actuation_latency_ms ?? 0}
-                                        </td>
-                                        <td className="py-2 px-3 font-mono tabular-nums text-right font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {r.total_e2e_ms ?? 0} ms
-                                        </td>
-                                        <td className="py-2 px-3 text-center font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                            {r.is_output_matched ? 'Ya' : 'Tidak'}
-                                        </td>
-                                    </tr>
-                                ))
+                                actuationRows.map((r, idx) => {
+                                    const sNum = sessionNumberMap[r.device_id || 'ESP32-SIBI-01'] || 1;
+                                    return (
+                                        <tr
+                                            key={r.id}
+                                            className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 text-zinc-700 dark:text-zinc-200 transition-colors"
+                                        >
+                                            <td className="py-2 px-3 font-mono tabular-nums text-zinc-400 dark:text-zinc-500">
+                                                {idx + 1}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                                    Sesi #{sNum}
+                                                </span>
+                                            </td>
+                                            <td className="py-2 px-3 font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                                                {r.target_letter || r.predicted_letter}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-mono font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                                                    {r.predicted_letter}
+                                                </span>
+                                            </td>
+                                            <td className="py-2 px-3 font-mono tabular-nums text-right">
+                                                {r.confidence != null ? `${(r.confidence * 100).toFixed(1)}%` : '-'}
+                                            </td>
+                                            <td className="py-2 px-3 font-mono text-zinc-600 dark:text-zinc-300">
+                                                {r.speaker_output || '-'}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                                <span
+                                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono border ${
+                                                        (r.confidence ?? 0) >= 0.7
+                                                            ? 'bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
+                                                            : 'bg-amber-50/70 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
+                                                    }`}
+                                                >
+                                                    {r.vibration_pattern || '-'}
+                                                </span>
+                                            </td>
+                                            <td className="py-2 px-3 font-mono tabular-nums text-right text-zinc-500 dark:text-zinc-400">
+                                                {r.api_latency_ms ?? 0} / {r.wifi_latency_ms ?? 0} / {r.actuation_latency_ms ?? 0}
+                                            </td>
+                                            <td className="py-2 px-3 font-mono tabular-nums text-right font-semibold text-zinc-900 dark:text-zinc-100">
+                                                {r.total_e2e_ms ?? 0} ms
+                                            </td>
+                                            <td className="py-2 px-3 text-center font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                                {r.is_output_matched ? 'Ya' : 'Tidak'}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -674,6 +859,7 @@ export const IoTTestingView: React.FC = () => {
                         <thead className="bg-zinc-50 dark:bg-[#18181B] border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 sticky top-0 z-10">
                             <tr>
                                 <th className="py-2.5 px-3 font-medium">No</th>
+                                <th className="py-2.5 px-3 font-medium">Sesi Uji</th>
                                 <th className="py-2.5 px-3 font-medium text-right">Jarak Aktual</th>
                                 <th className="py-2.5 px-3 font-medium text-right">Sensor HC-SR04</th>
                                 <th className="py-2.5 px-3 font-medium text-right">Galat</th>
@@ -686,12 +872,13 @@ export const IoTTestingView: React.FC = () => {
                         <tbody className="divide-y divide-zinc-200/70 dark:divide-zinc-800 font-mono tabular-nums">
                             {distanceRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="py-8 text-center text-zinc-400 dark:text-zinc-500 text-xs">
+                                    <td colSpan={9} className="py-8 text-center text-zinc-400 dark:text-zinc-500 text-xs">
                                         Belum ada data pengukuran sensor. Gunakan form di atas atau klik &quot;Rekam Skenario Uji IoT&quot;.
                                     </td>
                                 </tr>
                             ) : (
                                 distanceRows.map((r, idx) => {
+                                    const sNum = sessionNumberMap[r.device_id || 'ESP32-SIBI-01'] || 1;
                                     const diff = Math.abs(
                                         (r.measured_distance_cm || 0) - (r.actual_distance_cm || 0)
                                     ).toFixed(2);
@@ -701,6 +888,11 @@ export const IoTTestingView: React.FC = () => {
                                             className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 text-zinc-700 dark:text-zinc-200 transition-colors"
                                         >
                                             <td className="py-2 px-3 text-zinc-400 dark:text-zinc-500">{idx + 1}</td>
+                                            <td className="py-2 px-3">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                                    Sesi #{sNum}
+                                                </span>
+                                            </td>
                                             <td className="py-2 px-3 text-right">{r.actual_distance_cm?.toFixed(1)} cm</td>
                                             <td className="py-2 px-3 text-right font-semibold text-zinc-900 dark:text-zinc-100">
                                                 {r.measured_distance_cm?.toFixed(1)} cm
