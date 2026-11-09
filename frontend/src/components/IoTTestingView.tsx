@@ -306,7 +306,7 @@ export const IoTTestingView: React.FC = () => {
                     speaker_output: `Suara "${predicted}" (${mp3Idx}.mp3)`,
                     vibration_pattern: isHigh
                         ? 'Getar Pendek 150ms (Valid)'
-                        : 'Getar Panjang 600ms (Confidence Rendah)',
+                        : 'Getar Panjang 600ms (Ulang)',
                     is_output_matched: predicted === letter,
                     api_latency_ms: apiMs,
                     wifi_latency_ms: wifiMs,
@@ -333,8 +333,8 @@ export const IoTTestingView: React.FC = () => {
                     led_indicator_status: inRange
                         ? 'Hijau (Ideal 20–60 cm)'
                         : s.measCm < 20.0
-                        ? 'Merah/Kuning (< 20 cm Terlalu Dekat)'
-                        : 'Merah/Kuning (> 60 cm Terlalu Jauh)',
+                        ? 'Merah (<20 cm Terlalu Dekat)'
+                        : 'Merah (>60 cm Terlalu Jauh)',
                     light_condition: s.cond,
                     measured_lux: s.lux,
                     helper_led_status: s.lux < 150 ? 'ON (Menyala Otomatis)' : 'OFF (Mati)',

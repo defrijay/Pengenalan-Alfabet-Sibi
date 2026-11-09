@@ -227,6 +227,14 @@ def post_iot_telemetry(
         if api_l > 0 or wifi_l > 0 or act_l > 0:
             data["total_e2e_ms"] = round(api_l + wifi_l + act_l, 2)
 
+    # Guard panjang string agar tidak melebihi batas kolom VARCHAR PostgreSQL
+    for col32 in ("led_indicator_status", "light_condition", "helper_led_status", "vibration_pattern"):
+        if isinstance(data.get(col32), str) and len(data[col32]) > 32:
+            data[col32] = data[col32][:32]
+    for col64 in ("device_id", "speaker_output"):
+        if isinstance(data.get(col64), str) and len(data[col64]) > 64:
+            data[col64] = data[col64][:64]
+
     rec = crud.log_iot_telemetry(db, data)
     return IoTTelemetryItem(
         id=rec.id,
