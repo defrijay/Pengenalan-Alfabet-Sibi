@@ -33,7 +33,6 @@ import {
 } from '../services/api';
 import type { MonitoringStatsResponse } from '../types';
 import { REAL_SIBI_SAMPLES, REAL_SIBI_LETTERS } from '../services/sampleLandmarks';
-import { IoTTestingView } from './IoTTestingView';
 
 interface CloudMonitoringViewProps {
     currentSessionId: string | null;
@@ -618,9 +617,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                     </table>
                 </div>
             </div>
-
-            {/* Bagian Pengujian Fungsional Purwarupa Modul IoT (Tabel 4.16, 4.17, 4.18) */}
-            <IoTTestingView />
         </div>
     );
 };

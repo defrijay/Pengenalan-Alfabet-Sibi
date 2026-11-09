@@ -12,6 +12,7 @@ import { QuickControls } from './components/QuickControls';
 import { TranslationCard } from './components/TranslationCard';
 import { HistoryCard } from './components/HistoryCard';
 import { CloudMonitoringView } from './components/CloudMonitoringView';
+import { IoTTestingView } from './components/IoTTestingView';
 import { useCamera } from './hooks/useCamera';
 import { useMediaPipeHands } from './hooks/useMediaPipeHands';
 import { useSpeechSynthesis } from './hooks/useSpeechSynthesis';
@@ -177,7 +178,7 @@ export const App: React.FC = () => {
                         onTabChange={setActiveTab}
                     />
 
-                    {/* Main Layout: Tab Translasi Live vs Tab Monitoring Pengujian Cloud */}
+                    {/* Main Layout: Tab Translasi Live vs Tab Monitoring Pengujian Cloud vs Tab Modul IoT */}
                     {activeTab === 'translator' ? (
                         <main className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                             {/* Sisi Kiri: Video Feed & Kontrol Kamera (Lebar 3/4) */}
@@ -212,9 +213,13 @@ export const App: React.FC = () => {
                                 />
                             </aside>
                         </main>
-                    ) : (
+                    ) : activeTab === 'monitoring' ? (
                         <main className="flex-grow flex flex-col">
                             <CloudMonitoringView currentSessionId={sessionId} />
+                        </main>
+                    ) : (
+                        <main className="flex-grow flex flex-col">
+                            <IoTTestingView />
                         </main>
                     )}
                 </div>

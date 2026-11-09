@@ -289,7 +289,7 @@ export const IoTTestingView: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col gap-5 w-full mt-2">
+        <div className="flex flex-col gap-5 w-full">
             {/* Header Panel Pengujian IoT */}
             <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-xl border border-slate-200/50 dark:border-slate-700/50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>

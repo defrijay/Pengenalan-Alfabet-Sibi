@@ -5,9 +5,9 @@
  */
 
 import React from 'react';
-import { Hand, Sun, Moon, Video, BarChart3 } from 'lucide-react';
+import { Hand, Sun, Moon, Video, BarChart3, Cpu } from 'lucide-react';
 
-export type ActiveTabType = 'translator' | 'monitoring';
+export type ActiveTabType = 'translator' | 'monitoring' | 'iot';
 
 interface HeaderProps {
     isCameraActive: boolean;
@@ -42,8 +42,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                {/* Navigasi Tab: Kamera Translasi vs Log Pengujian Cloud */}
-                <div className="flex items-center bg-slate-100 dark:bg-slate-900/70 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
+                {/* Navigasi Tab: Kamera Translasi vs Log Pengujian Cloud vs Log Pengujian Modul IoT */}
+                <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-900/70 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 gap-1">
                     <button
                         onClick={() => onTabChange('translator')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -65,6 +65,17 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                         <BarChart3 className="w-3.5 h-3.5" />
                         <span>Log &amp; Uji Cloud (RM4)</span>
+                    </button>
+                    <button
+                        onClick={() => onTabChange('iot')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            activeTab === 'iot'
+                                ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        }`}
+                    >
+                        <Cpu className="w-3.5 h-3.5" />
+                        <span>Log &amp; Uji Modul IoT</span>
                     </button>
                 </div>
 
