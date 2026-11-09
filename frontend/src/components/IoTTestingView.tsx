@@ -554,7 +554,7 @@ export const IoTTestingView: React.FC = () => {
                 </p>
                 <div className="overflow-x-auto max-h-[340px] overflow-y-auto rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
                     <table className="w-full text-left border-collapse text-xs">
-                        <thead className="bg-slate-100/90 dark:bg-slate-900/90 text-slate-500 dark:text-slate-400 sticky top-0">
+                        <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th className="py-2.5 px-3">No.</th>
                                 <th className="py-2.5 px-3">Huruf Uji</th>
@@ -624,7 +624,7 @@ export const IoTTestingView: React.FC = () => {
                 </p>
                 <div className="overflow-x-auto max-h-[300px] overflow-y-auto rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
                     <table className="w-full text-left border-collapse text-xs">
-                        <thead className="bg-slate-100/90 dark:bg-slate-900/90 text-slate-500 dark:text-slate-400 sticky top-0">
+                        <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th className="py-2.5 px-3">No.</th>
                                 <th className="py-2.5 px-3">Jarak Aktual (cm)</th>

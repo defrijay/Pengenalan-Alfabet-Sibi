@@ -31,7 +31,8 @@ import {
     predictSignApi,
     API_BASE_URL,
 } from '../services/api';
-import type { MonitoringStatsResponse, Landmark } from '../types';
+import type { MonitoringStatsResponse } from '../types';
+import { REAL_SIBI_SAMPLES, REAL_SIBI_LETTERS } from '../services/sampleLandmarks';
 import { IoTTestingView } from './IoTTestingView';
 
 interface CloudMonitoringViewProps {
@@ -46,13 +47,6 @@ interface ConcurrencyBenchmarkRow {
     p95Ms: number;
     errorRate: number;
 }
-
-// Dummy 21 hand landmarks untuk uji beban API otomatis dari antarmuka
-const DUMMY_LANDMARKS: Landmark[] = Array.from({ length: 21 }, (_, i) => ({
-    x: Number((0.5 + 0.05 * Math.cos(i)).toFixed(4)),
-    y: Number((0.5 + 0.05 * Math.sin(i)).toFixed(4)),
-    z: Number((0.01 * (i % 5)).toFixed(4)),
-}));
 
 export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ currentSessionId }) => {
     const [stats, setStats] = useState<MonitoringStatsResponse>({
@@ -157,20 +151,27 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                 let failures = 0;
                 const tStart = performance.now();
 
-                // Jalankan dalam batch sesuai tingkat concurrency
+                // Jalankan dalam batch sesuai tingkat concurrency dengan sampel landmark SIBI asli A-Y secara bergantian
+                let lastMeasuredRtt = 68;
                 for (let i = 0; i < tier.totalRequests; i += tier.concurrency) {
                     const batchSize = Math.min(tier.concurrency, tier.totalRequests - i);
-                    const promises = Array.from({ length: batchSize }, async () => {
+                    const promises = Array.from({ length: batchSize }, async (_, batchOffset) => {
+                        const sampleIdx = i + batchOffset;
+                        const letterKey = REAL_SIBI_LETTERS[sampleIdx % REAL_SIBI_LETTERS.length];
+                        const landmarksSample = REAL_SIBI_SAMPLES[letterKey];
+                        const simulatedLux = 410 + (sampleIdx % 8) * 12;
                         const reqStart = performance.now();
                         try {
                             await predictSignApi({
                                 session_id: benchSessionId,
-                                landmarks: DUMMY_LANDMARKS,
+                                landmarks: landmarksSample,
+                                latency_ms: lastMeasuredRtt,
                                 fps: 30,
-                                lux: 450,
+                                lux: simulatedLux,
                                 hand_scale: 'Ideal',
                             });
                             const rtt = Math.round(performance.now() - reqStart);
+                            lastMeasuredRtt = rtt;
                             latencies.push(rtt);
                         } catch {
                             failures += 1;
@@ -504,7 +505,7 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
 
                 <div className="overflow-x-auto max-h-[420px] overflow-y-auto rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
                     <table className="w-full text-left border-collapse text-xs">
-                        <thead className="bg-slate-100/90 dark:bg-slate-900/90 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
+                        <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th className="py-3 px-3 font-bold">No</th>
                                 <th className="py-3 px-3 font-bold">Waktu</th>

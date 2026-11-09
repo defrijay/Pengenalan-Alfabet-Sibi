@@ -9,6 +9,7 @@ untuk menghasilkan metrik kuantitatif RM4 (Tabel 4.13, 4.14, 4.15 di Bab IV Skri
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 import time
@@ -21,11 +22,20 @@ try:
 except ImportError:
     psutil = None
 
-# Sample dummy 21 landmarks hand skeleton
-DUMMY_LANDMARKS = [
-    {"x": 0.5 + 0.05 * np.cos(i), "y": 0.5 + 0.05 * np.sin(i), "z": 0.01 * (i % 5)}
-    for i in range(21)
-]
+# Load 24 real SIBI alphabet landmark samples (A-Y) from sample_landmarks.json if available
+_SAMPLE_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_landmarks.json")
+if os.path.exists(_SAMPLE_JSON_PATH):
+    with open(_SAMPLE_JSON_PATH, "r", encoding="utf-8") as _f:
+        SIBI_SAMPLES: dict[str, list[dict]] = json.load(_f)
+    SIBI_LETTERS = sorted(SIBI_SAMPLES.keys())
+else:
+    SIBI_SAMPLES = {
+        "G": [
+            {"x": float(0.5 + 0.05 * np.cos(i)), "y": float(0.5 + 0.05 * np.sin(i)), "z": float(0.01 * (i % 5))}
+            for i in range(21)
+        ]
+    }
+    SIBI_LETTERS = ["G"]
 
 
 async def send_predict_request(
@@ -33,12 +43,15 @@ async def send_predict_request(
     base_url: str,
     session_id: str,
     last_rtt_ms: int | None = None,
+    sample_index: int = 0,
 ):
+    letter_key = SIBI_LETTERS[sample_index % len(SIBI_LETTERS)]
+    landmarks = SIBI_SAMPLES[letter_key]
     payload = {
         "session_id": session_id,
-        "landmarks": DUMMY_LANDMARKS,
+        "landmarks": landmarks,
         "fps": 30,
-        "lux": 450,
+        "lux": 410 + (sample_index % 8) * 12,
         "hand_scale": "Ideal",
     }
     if last_rtt_ms is not None:
@@ -62,12 +75,14 @@ async def run_single_request_benchmark(base_url: str, session_id: str, num_reque
 
     async with httpx.AsyncClient() as client:
         # Warmup
-        ok_w, lat_w, data_w = await send_predict_request(client, base_url, session_id)
+        ok_w, lat_w, data_w = await send_predict_request(client, base_url, session_id, sample_index=0)
         last_rtt = int(round(lat_w)) if ok_w else None
         server_mem = data_w.get("server_memory_mb")
 
         for i in range(num_requests):
-            ok, lat, data = await send_predict_request(client, base_url, session_id, last_rtt_ms=last_rtt)
+            ok, lat, data = await send_predict_request(
+                client, base_url, session_id, last_rtt_ms=last_rtt, sample_index=i
+            )
             if ok:
                 successes += 1
                 latencies.append(lat)
@@ -111,10 +126,12 @@ async def run_concurrency_tier(base_url: str, session_id: str, concurrency: int,
     semaphore = asyncio.Semaphore(concurrency)
 
     async with httpx.AsyncClient(limits=httpx.Limits(max_connections=concurrency * 2, max_keepalive_connections=concurrency)) as client:
-        async def worker():
+        async def worker(req_idx: int):
             nonlocal success_count, failure_count
             async with semaphore:
-                ok, lat, _ = await send_predict_request(client, base_url, session_id)
+                ok, lat, _ = await send_predict_request(
+                    client, base_url, session_id, last_rtt_ms=68, sample_index=req_idx
+                )
                 if ok:
                     success_count += 1
                     latencies.append(lat)
@@ -122,7 +139,7 @@ async def run_concurrency_tier(base_url: str, session_id: str, concurrency: int,
                     failure_count += 1
 
         t_start = time.perf_counter()
-        tasks = [asyncio.create_task(worker()) for _ in range(total_requests)]
+        tasks = [asyncio.create_task(worker(idx)) for idx in range(total_requests)]
         await asyncio.gather(*tasks)
         total_time = time.perf_counter() - t_start
 
