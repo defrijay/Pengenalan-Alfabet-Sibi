@@ -1,11 +1,11 @@
 /**
  * components/CameraFeed.tsx
- * Tampilan video webcam beserta overlay Target Area (ROI Isyarat dan Posisi Badan),
- * serta placeholder visual ketika kamera sedang tidak aktif.
+ * Bingkai viewfinder teknis kamera webcam beserta marka ROI (Posisi Badan & Area Isyarat)
+ * dan HUD telemetri Computer Vision.
  */
 
 import React from 'react';
-import { CameraOff, Eye, Hand, User } from 'lucide-react';
+import { CameraOff, Hand, User } from 'lucide-react';
 import { MetricsPanel } from './MetricsPanel';
 import type { PerformanceMetrics, SpatialMetrics } from '../types';
 
@@ -29,7 +29,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
     spatial,
 }) => {
     return (
-        <div className="relative aspect-video bg-gradient-to-br from-slate-900 to-slate-950 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center w-full border border-slate-700/50 dark:border-slate-700/60 transition-colors flex-1">
+        <div className="relative aspect-video bg-[#09090B] rounded-xl overflow-hidden flex items-center justify-center w-full border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex-1 bg-tech-grid">
             {isCameraActive ? (
                 <video
                     ref={videoRef}
@@ -39,98 +39,87 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
                     muted
                 />
             ) : (
-                <div className="text-center text-slate-500 dark:text-slate-500 flex flex-col items-center transition-colors">
-                    <div className="relative">
-                        <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-slate-800/50 dark:bg-slate-800/50 flex items-center justify-center border-2 border-slate-700/50">
-                            <CameraOff className="w-12 h-12 sm:w-16 sm:h-16 opacity-40 stroke-[1.5]" />
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-700/50 flex items-center justify-center">
-                            <Eye className="w-3 h-3 text-slate-400" />
-                        </div>
+                <div className="text-center flex flex-col items-center px-4">
+                    <div className="w-14 h-14 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-3">
+                        <CameraOff className="w-6 h-6 text-zinc-500 stroke-[1.5]" />
                     </div>
-                    <p className="text-lg sm:text-xl font-medium tracking-wide mt-4 text-slate-400">
-                        Kamera Nonaktif
+                    <p className="text-sm font-medium text-zinc-300 tracking-tight">
+                        Viewfinder Kamera Nonaktif
                     </p>
-                    <p className="text-sm mt-1 opacity-50">
-                        Klik &quot;Mulai Kamera&quot; untuk memulai translasi
+                    <p className="text-xs text-zinc-500 mt-1 font-mono">
+                        Klik tombol &quot;Mulai Kamera&quot; di bawah untuk mengaktifkan akuisisi 21-landmark MediaPipe
                     </p>
                 </div>
             )}
 
-            {/* Overlay Dua Placeholder Target Area */}
+            {/* Overlay Dua Kotak ROI Teknis (Posisi Badan & Area Isyarat Tangan) */}
             {isCameraActive && (
-                <div className="absolute inset-0 pointer-events-none flex flex-row items-center justify-center p-2 sm:p-8 z-10 gap-2 sm:gap-12">
-                    {/* Kotak Kiri: Area Wajah & Badan */}
-                    <div className="w-[45%] sm:w-[55%] h-[80%] sm:h-[90%] border-2 border-dashed border-blue-400/30 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center relative transition-all duration-700 bg-blue-500/5 backdrop-blur-[2px]">
-                        <div className="absolute top-0 left-0 w-4 sm:w-8 h-4 sm:h-8 border-t-2 sm:border-t-3 border-l-2 sm:border-l-3 border-blue-400/40 rounded-tl-2xl sm:rounded-tl-3xl"></div>
-                        <div className="absolute top-0 right-0 w-4 sm:w-8 h-4 sm:h-8 border-t-2 sm:border-t-3 border-r-2 sm:border-r-3 border-blue-400/40 rounded-tr-2xl sm:rounded-tr-3xl"></div>
-                        <div className="absolute bottom-0 left-0 w-4 sm:w-8 h-4 sm:h-8 border-b-2 sm:border-b-3 border-l-2 sm:border-l-3 border-blue-400/40 rounded-bl-2xl sm:rounded-bl-3xl"></div>
-                        <div className="absolute bottom-0 right-0 w-4 sm:w-8 h-4 sm:h-8 border-b-2 sm:border-b-3 border-r-2 sm:border-r-3 border-blue-400/40 rounded-br-2xl sm:rounded-br-3xl"></div>
+                <div className="absolute inset-0 pointer-events-none flex flex-row items-center justify-center p-3 sm:p-8 z-10 gap-3 sm:gap-10">
+                    {/* ROI Kiri: Posisi Badan */}
+                    <div className="w-[45%] sm:w-[54%] h-[80%] sm:h-[88%] border border-dashed border-zinc-400/40 rounded-lg flex flex-col items-center justify-center relative bg-zinc-950/10">
+                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-zinc-300/70 rounded-tl-md" />
+                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-zinc-300/70 rounded-tr-md" />
+                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-zinc-300/70 rounded-bl-md" />
+                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-zinc-300/70 rounded-br-md" />
 
-                        <div className="flex flex-col items-center opacity-60">
-                            <User className="w-5 h-5 sm:w-10 sm:h-10 text-blue-300/70 mb-1 sm:mb-2" strokeWidth={1.5} />
-                            <span className="bg-black/60 backdrop-blur-md text-blue-300/80 text-[8px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-semibold shadow-lg text-center border border-blue-400/20 whitespace-nowrap">
-                                Posisi Badan
+                        <div className="flex flex-col items-center opacity-75">
+                            <User className="w-5 h-5 sm:w-8 sm:h-8 text-zinc-300 mb-1.5" strokeWidth={1.5} />
+                            <span className="bg-zinc-950/85 text-zinc-300 text-[9px] sm:text-[11px] font-mono uppercase tracking-wider px-2.5 py-1 rounded border border-zinc-800">
+                                ROI: Posisi Badan
                             </span>
                         </div>
                     </div>
 
-                    {/* Kotak Kanan: Area Isyarat Tangan */}
+                    {/* ROI Kanan: Area Isyarat Tangan */}
                     <div
-                        className={`w-[40%] sm:w-[38%] h-[80%] sm:h-[90%] border-2 border-dashed rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center relative transition-all duration-500 ${
+                        className={`w-[40%] sm:w-[38%] h-[80%] sm:h-[88%] border border-dashed rounded-lg flex flex-col items-center justify-center relative transition-colors duration-200 ${
                             isHandInArea
-                                ? 'border-emerald-400 bg-emerald-400/10 shadow-[0_0_40px_rgba(52,211,153,0.25)] scale-[1.02]'
-                                : 'border-emerald-400/30 animate-[pulse_3s_ease-in-out_infinite]'
+                                ? 'border-emerald-400 bg-emerald-950/20'
+                                : 'border-zinc-400/40 bg-zinc-950/10'
                         }`}
                     >
                         <div
-                            className={`absolute top-0 left-0 w-4 sm:w-8 h-4 sm:h-8 border-t-2 sm:border-t-3 border-l-2 sm:border-l-3 rounded-tl-2xl sm:rounded-tl-3xl transition-colors duration-500 ${
-                                isHandInArea ? 'border-emerald-300' : 'border-emerald-400/40'
+                            className={`absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 rounded-tl-md ${
+                                isHandInArea ? 'border-emerald-400' : 'border-zinc-300/70'
                             }`}
-                        ></div>
+                        />
                         <div
-                            className={`absolute top-0 right-0 w-4 sm:w-8 h-4 sm:h-8 border-t-2 sm:border-t-3 border-r-2 sm:border-r-3 rounded-tr-2xl sm:rounded-tr-3xl transition-colors duration-500 ${
-                                isHandInArea ? 'border-emerald-300' : 'border-emerald-400/40'
+                            className={`absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 rounded-tr-md ${
+                                isHandInArea ? 'border-emerald-400' : 'border-zinc-300/70'
                             }`}
-                        ></div>
+                        />
                         <div
-                            className={`absolute bottom-0 left-0 w-4 sm:w-8 h-4 sm:h-8 border-b-2 sm:border-b-3 border-l-2 sm:border-l-3 rounded-bl-2xl sm:rounded-bl-3xl transition-colors duration-500 ${
-                                isHandInArea ? 'border-emerald-300' : 'border-emerald-400/40'
+                            className={`absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 rounded-bl-md ${
+                                isHandInArea ? 'border-emerald-400' : 'border-zinc-300/70'
                             }`}
-                        ></div>
+                        />
                         <div
-                            className={`absolute bottom-0 right-0 w-4 sm:w-8 h-4 sm:h-8 border-b-2 sm:border-b-3 border-r-2 sm:border-r-3 rounded-br-2xl sm:rounded-br-3xl transition-colors duration-500 ${
-                                isHandInArea ? 'border-emerald-300' : 'border-emerald-400/40'
+                            className={`absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 rounded-br-md ${
+                                isHandInArea ? 'border-emerald-400' : 'border-zinc-300/70'
                             }`}
-                        ></div>
+                        />
 
                         <Hand
-                            className={`w-8 h-8 sm:w-16 sm:h-16 mb-1 sm:mb-3 transition-all duration-500 ${
-                                isHandInArea
-                                    ? 'text-emerald-300 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)] scale-110'
-                                    : 'text-emerald-400/60 drop-shadow-[0_0_12px_rgba(52,211,153,0.3)]'
+                            className={`w-6 h-6 sm:w-10 sm:h-10 mb-1.5 transition-colors ${
+                                isHandInArea ? 'text-emerald-400' : 'text-zinc-400'
                             }`}
                             strokeWidth={1.5}
                         />
 
                         <span
-                            className={`backdrop-blur-sm text-[7px] sm:text-[10px] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium tracking-wide text-center transition-all duration-500 whitespace-nowrap ${
+                            className={`text-[9px] sm:text-[11px] px-2.5 py-1 rounded font-mono uppercase tracking-wider border ${
                                 isHandInArea
-                                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/40 border border-emerald-400/30'
-                                    : 'bg-black/60 text-emerald-300/80 border border-emerald-400/20'
+                                    ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
+                                    : 'bg-zinc-950/85 text-zinc-300 border-zinc-800'
                             }`}
                         >
-                            {isHandInArea ? '✓ Tangan Terdeteksi' : 'Area Isyarat'}
+                            {isHandInArea ? 'ROI: Tangan Terkunci' : 'ROI: Area Isyarat'}
                         </span>
-
-                        {isHandInArea && (
-                            <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 w-3 sm:w-5 h-3 sm:h-5 rounded-full bg-emerald-400 animate-ping opacity-75"></div>
-                        )}
                     </div>
                 </div>
             )}
 
-            {/* Dashboard Analitik Kiri Atas */}
+            {/* HUD Telemetri Kiri Atas */}
             <MetricsPanel
                 isCameraActive={isCameraActive}
                 currentSign={currentSign}
@@ -139,16 +128,16 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
                 spatial={spatial}
             />
 
-            {/* Indikator Status Kanan Bawah */}
+            {/* Status Akuisisi Kanan Bawah */}
             {isCameraActive && (
-                <div className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 z-30 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 flex items-center gap-2 bg-zinc-950/85 px-2.5 py-1 rounded-md border border-zinc-800">
                     <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                            isHandInArea ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                            isHandInArea ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
                         }`}
-                    ></span>
-                    <span className="text-[9px] sm:text-[10px] text-slate-300 font-mono font-medium">
-                        {isHandInArea ? 'HAND DETECTED' : 'SCANNING...'}
+                    />
+                    <span className="text-[10px] text-zinc-300 font-mono uppercase tracking-wider">
+                        {isHandInArea ? 'TRACKING: LOCKED' : 'TRACKING: SEARCHING'}
                     </span>
                 </div>
             )}

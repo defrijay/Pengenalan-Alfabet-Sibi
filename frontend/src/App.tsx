@@ -130,7 +130,6 @@ export const App: React.FC = () => {
 
         if (isCameraActive) {
             interval = setInterval(() => {
-                // Update simulasi metrik telemetry client
                 setPerformance({
                     fps: Math.floor(Math.random() * (31 - 24) + 24),
                     latency: Math.floor(Math.random() * (55 - 38) + 38),
@@ -167,9 +166,9 @@ export const App: React.FC = () => {
     // -------------------------------------------------------------------------
     return (
         <div className={`${isDarkMode ? 'dark' : ''} min-h-screen w-full`}>
-            <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-4 sm:px-8 py-6 sm:py-10 font-sans flex flex-col overflow-x-hidden transition-colors duration-500">
-                <div className="max-w-[1600px] w-full mx-auto h-full flex flex-col flex-grow gap-4 sm:gap-6">
-                    {/* Header Navigasi */}
+            <div className="min-h-screen w-full bg-[#F8F9FA] dark:bg-[#09090B] text-zinc-900 dark:text-zinc-100 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 font-sans flex flex-col overflow-x-hidden transition-colors duration-200">
+                <div className="max-w-[1600px] w-full mx-auto h-full flex flex-col flex-grow gap-4 sm:gap-5">
+                    {/* Header Navigasi Instrumen */}
                     <Header
                         isCameraActive={isCameraActive}
                         isDarkMode={isDarkMode}
@@ -180,9 +179,9 @@ export const App: React.FC = () => {
 
                     {/* Main Layout: Tab Translasi Live vs Tab Monitoring Pengujian Cloud vs Tab Modul IoT */}
                     {activeTab === 'translator' ? (
-                        <main className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                            {/* Sisi Kiri: Video Feed & Kontrol Kamera (Lebar 3/4) */}
-                            <section className="lg:col-span-3 flex flex-col gap-4 h-full">
+                        <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+                            {/* Sisi Kiri: Video Feed & Kontrol Kamera (8/12 kolom) */}
+                            <section className="lg:col-span-8 xl:col-span-9 flex flex-col gap-3 sm:gap-4 h-full">
                                 <CameraFeed
                                     videoRef={videoRef}
                                     isCameraActive={isCameraActive}
@@ -198,10 +197,11 @@ export const App: React.FC = () => {
                                 />
                             </section>
 
-                            {/* Sisi Kanan: Hasil Deteksi & Riwayat Kalimat (Lebar 1/4) */}
-                            <aside className="lg:col-span-1 flex flex-col gap-4 sm:gap-6 h-full">
+                            {/* Sisi Kanan: Hasil Deteksi & Riwayat Kalimat (4/12 kolom) */}
+                            <aside className="lg:col-span-4 xl:col-span-3 flex flex-col gap-4 h-full">
                                 <TranslationCard
                                     currentSign={currentSign}
+                                    confidence={confidence}
                                     isHandInArea={isHandInArea}
                                     isCameraActive={isCameraActive}
                                 />

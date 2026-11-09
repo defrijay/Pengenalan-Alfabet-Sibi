@@ -1,51 +1,71 @@
 /**
  * components/TranslationCard.tsx
- * Kartu penampil hasil klasifikasi huruf SIBI saat ini secara langsung (real-time).
+ * Kartu penampil huruf SIBI yang terdeteksi secara real-time dengan latar grid teknis
+ * dan indikator progress bar confidence tipis.
  */
 
 import React from 'react';
 
 interface TranslationCardProps {
     currentSign: string;
+    confidence?: number;
     isHandInArea: boolean;
     isCameraActive: boolean;
 }
 
 export const TranslationCard: React.FC<TranslationCardProps> = ({
     currentSign,
+    confidence = 0,
     isHandInArea,
     isCameraActive,
 }) => {
+    const isDetected = isHandInArea && isCameraActive && currentSign !== 'Menunggu...';
+    const confPercent = isDetected ? Math.round(confidence * 100) : 0;
+
     return (
-        <div className="flex-none bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-5 sm:p-6 rounded-3xl shadow-xl border border-slate-200/50 dark:border-slate-700/50 flex flex-col justify-center items-center text-center h-36 sm:h-44 relative overflow-hidden transition-colors duration-300">
-            <div className="absolute top-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-sky-500 to-cyan-500"></div>
-            <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-blue-500/5 blur-2xl"></div>
+        <div className="flex-none bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                    <span
+                        className={`inline-block w-1.5 h-1.5 rounded-full ${
+                            isDetected ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400 dark:bg-zinc-600'
+                        }`}
+                    />
+                    Deteksi Huruf Saat Ini
+                </span>
+                <span className="text-[11px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
+                    {isDetected ? `${confPercent}% CONF` : 'IDLE'}
+                </span>
+            </div>
 
-            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 sm:mb-2 font-bold flex items-center gap-1.5">
-                <span
-                    className={`inline-block w-1.5 h-1.5 rounded-full ${
-                        isHandInArea && isCameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
+            {/* Kotak Fokus Huruf Berlatar Grid Teknis */}
+            <div className="bg-zinc-50 dark:bg-[#18181B] bg-tech-grid border border-zinc-200/80 dark:border-zinc-800 rounded-lg py-6 px-4 flex items-center justify-center min-h-[104px]">
+                <h2
+                    className={`font-mono tabular-nums font-bold tracking-tight transition-colors ${
+                        isDetected
+                            ? 'text-4xl sm:text-5xl text-zinc-900 dark:text-zinc-100'
+                            : 'text-lg sm:text-xl text-zinc-400 dark:text-zinc-500 font-normal'
                     }`}
-                ></span>
-                Deteksi Saat Ini
-            </p>
+                >
+                    {currentSign}
+                </h2>
+            </div>
 
-            <h2
-                className={`text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight break-words w-full px-2 transition-all duration-500 ${
-                    isHandInArea && isCameraActive
-                        ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent'
-                        : 'text-blue-600 dark:text-blue-400'
-                }`}
-            >
-                {currentSign}
-            </h2>
-
-            {isHandInArea && isCameraActive && currentSign !== 'Menunggu...' && (
-                <div className="absolute -top-1 -right-1 w-3 h-3">
-                    <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75"></span>
-                    <span className="absolute inset-0 rounded-full bg-emerald-400"></span>
+            {/* Progress Bar Confidence Tipis (h-1.5) */}
+            <div className="mt-3">
+                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                        className={`h-full transition-all duration-300 ${
+                            confPercent >= 75
+                                ? 'bg-emerald-500'
+                                : confPercent >= 50
+                                ? 'bg-amber-500'
+                                : 'bg-zinc-400 dark:bg-zinc-600'
+                        }`}
+                        style={{ width: `${confPercent}%` }}
+                    />
                 </div>
-            )}
+            </div>
         </div>
     );
 };

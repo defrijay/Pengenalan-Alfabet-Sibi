@@ -1,7 +1,7 @@
 /**
  * components/Header.tsx
- * Bagian navigasi dan header aplikasi, memuat judul sistem, indikator status online,
- * dan tombol pengganti tema (Dark / Light Mode).
+ * Top-bar instrumen teknis untuk navigasi modul aplikasi, indikator status kamera,
+ * dan pengalih tema (Light / Dark Mode) bergaya bersih (Linear / Vercel Geist).
  */
 
 import React from 'react';
@@ -25,31 +25,40 @@ export const Header: React.FC<HeaderProps> = ({
     onTabChange,
 }) => {
     return (
-        <header className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 gap-4 sm:gap-0 transition-all duration-300">
-            <div className="flex items-center gap-4">
-                <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 items-center justify-center shadow-lg shadow-blue-500/25">
-                    <Hand className="w-6 h-6 text-white" strokeWidth={2} />
+        <header className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-[#111113] px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] gap-3 md:gap-4">
+            {/* Identitas Sistem */}
+            <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center border border-zinc-800 dark:border-zinc-200 shrink-0">
+                    <Hand className="w-4 h-4 text-zinc-100 dark:text-zinc-900" strokeWidth={2} />
                 </div>
                 <div>
-                    <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-600 dark:from-blue-400 dark:via-sky-400 dark:to-cyan-400 bg-clip-text text-transparent">
-                        SIBI Translator
-                    </h1>
-                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2 mt-0.5">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        Real-time 3DGCN Pipeline & Dual-Interface IoT
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                            SIBI Translator
+                        </h1>
+                        <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/80">
+                            S-GCN v2.4
+                        </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal tracking-tight">
+                        MediaPipe 21-Landmark Spatial Graph Convolutional Network &amp; ESP32 Telemetry
                     </p>
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                {/* Navigasi Tab: Kamera Translasi vs Log Pengujian Cloud vs Log Pengujian Modul IoT */}
-                <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-900/70 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 gap-1">
+            {/* Kontrol Navigasi & Status */}
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+                {/* Segmented Control Tabs */}
+                <nav
+                    aria-label="Navigasi Modul"
+                    className="flex flex-wrap items-center bg-zinc-100/90 dark:bg-[#18181B] p-1 rounded-lg border border-zinc-200/80 dark:border-zinc-800 gap-0.5"
+                >
                     <button
                         onClick={() => onTabChange('translator')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                             activeTab === 'translator'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-zinc-200/60 dark:border-zinc-700/80'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                         }`}
                     >
                         <Video className="w-3.5 h-3.5" />
@@ -57,10 +66,10 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                     <button
                         onClick={() => onTabChange('monitoring')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                             activeTab === 'monitoring'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-zinc-200/60 dark:border-zinc-700/80'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                         }`}
                     >
                         <BarChart3 className="w-3.5 h-3.5" />
@@ -68,67 +77,48 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                     <button
                         onClick={() => onTabChange('iot')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                             activeTab === 'iot'
-                                ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-zinc-200/60 dark:border-zinc-700/80'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                         }`}
                     >
                         <Cpu className="w-3.5 h-3.5" />
                         <span>Log &amp; Uji Modul IoT</span>
                     </button>
-                </div>
+                </nav>
 
-                {/* Status Badge */}
-                <div
-                    className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                        isCameraActive
-                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
-                            : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600'
-                    }`}
-                >
-                    <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                            isCameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
-                        }`}
-                    ></span>
-                    {isCameraActive ? 'Online' : 'Offline'}
-                </div>
-
-                {/* Dark Mode Toggle */}
-                <button
-                    onClick={onToggleDarkMode}
-                    aria-label="Toggle Dark Mode"
-                    className={`relative inline-flex items-center h-9 w-16 cursor-pointer rounded-full transition-all duration-300 ease-in-out border-2 shadow-md ${
-                        isDarkMode
-                            ? 'border-blue-400/50 bg-blue-900/60 hover:border-blue-400/80'
-                            : 'border-amber-300/50 bg-amber-100/80 hover:border-amber-400/80'
-                    }`}
-                >
-                    <Sun
-                        className={`absolute left-1.5 w-4 h-4 text-amber-500 transition-all duration-300 ${
-                            isDarkMode ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
-                        }`}
-                    />
-                    <Moon
-                        className={`absolute right-1.5 w-4 h-4 text-blue-300 transition-all duration-300 ${
-                            isDarkMode ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
-                        }`}
-                    />
-                    <span
-                        className={`inline-flex items-center justify-center w-7 h-7 transform bg-white dark:bg-slate-800 rounded-full shadow-lg transition-all duration-300 ease-in-out z-10 ${
-                            isDarkMode
-                                ? 'translate-x-8 ring-2 ring-blue-400/30'
-                                : 'translate-x-0 ring-2 ring-amber-400/30'
+                <div className="flex items-center gap-2">
+                    {/* Indikator Status Kamera Minimalis */}
+                    <div
+                        className={`hidden sm:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-mono font-medium border ${
+                            isCameraActive
+                                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
+                                : 'bg-zinc-100/80 dark:bg-[#18181B] text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800'
                         }`}
                     >
+                        <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                                isCameraActive ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400 dark:bg-zinc-600'
+                            }`}
+                        />
+                        {isCameraActive ? 'CAM:ONLINE' : 'CAM:STANDBY'}
+                    </div>
+
+                    {/* Tombol Ganti Tema Ikon Tunggal Bersih */}
+                    <button
+                        onClick={onToggleDarkMode}
+                        aria-label="Ganti Tema Terang / Gelap"
+                        title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-zinc-100/80 dark:bg-[#18181B] hover:bg-zinc-200/70 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+                    >
                         {isDarkMode ? (
-                            <Moon className="w-3.5 h-3.5 text-blue-400" />
+                            <Sun className="w-4 h-4 text-zinc-200" />
                         ) : (
-                            <Sun className="w-3.5 h-3.5 text-amber-500" />
+                            <Moon className="w-4 h-4 text-zinc-700" />
                         )}
-                    </span>
-                </button>
+                    </button>
+                </div>
             </div>
         </header>
     );
