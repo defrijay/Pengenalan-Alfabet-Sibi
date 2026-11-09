@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
                         }`}
                     >
                         <BarChart3 className="w-3.5 h-3.5" />
-                        <span>Log &amp; Uji Cloud (RM4)</span>
+                        <span>Log &amp; Uji Cloud</span>
                     </button>
                     <button
                         onClick={() => onTabChange('iot')}

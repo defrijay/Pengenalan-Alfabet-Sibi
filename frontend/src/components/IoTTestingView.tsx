@@ -1,14 +1,23 @@
 /**
  * components/IoTTestingView.tsx
- * Panel Pengujian Fungsional Purwarupa Modul IoT (ESP32) untuk Bab IV Skripsi:
- *  - Tabel 4.16: Kesesuaian Output Perangkat (Speaker DFPlayer Mini & Motor Getar) dengan Hasil Prediksi
- *  - Tabel 4.17 & 4.18A: Latensi Tambahan End-to-End (Cloud API -> WiFi ESP32 -> Aktuasi Speaker/Motor)
- *  - Tabel 4.18B & 4.18C: Fungsi Sensor Input (Jarak Ultrasonik HC-SR04 & Cahaya LDR + LED Bantu)
- * Dilengkapi manajemen Sesi Pengujian (Sesi #1, Sesi #2, dst.) dan filter per sesi.
+ * Panel Pengujian Fungsional Purwarupa Modul IoT (ESP32):
+ *  - Kesesuaian Output Perangkat (Speaker DFPlayer Mini & Motor Getar) dengan Hasil Prediksi Per Huruf (A-Y)
+ *  - Latensi Tambahan End-to-End (Cloud API -> WiFi ESP32 -> Aktuasi Speaker/Motor)
+ *  - Fungsi Sensor Input (Jarak Ultrasonik HC-SR04 & Cahaya LDR + LED Bantu)
+ * Dilengkapi manajemen Sesi Pengujian (Sesi #1, Sesi #2, dst.) dan hierarki visual ikon.
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
+    Cpu,
+    Radio,
+    Ruler,
+    Sun,
+    Wifi,
+    Zap,
+    Volume2,
+    Vibrate,
+    Clock,
     Play,
     Copy,
     Check,
@@ -54,7 +63,6 @@ export const IoTTestingView: React.FC = () => {
     const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>('ALL');
     const [manualSessionCounter, setManualSessionCounter] = useState<number>(1);
 
-    // State form manual kalibrasi sensor (untuk Tabel 4.18)
     const [actualDistInput, setActualDistInput] = useState<string>('30');
     const [measuredDistInput, setMeasuredDistInput] = useState<string>('30.4');
     const [luxInput, setLuxInput] = useState<string>('420');
@@ -80,7 +88,6 @@ export const IoTTestingView: React.FC = () => {
         return () => clearInterval(timer);
     }, [fetchIoTData]);
 
-    // Bangun daftar sesi pengujian IoT berdasarkan device_id secara kronologis (Sesi #1, Sesi #2, ...)
     const iotSessionList = useMemo<IoTSessionMeta[]>(() => {
         const map = new Map<string, { count: number; earliest: string }>();
         const chronological = [...dashboard.records].sort(
@@ -123,19 +130,16 @@ export const IoTTestingView: React.FC = () => {
         return rec;
     }, [iotSessionList]);
 
-    // Tentukan nomor sesi aktif untuk input/simulasi berikutnya
     const activeSessionNumber = useMemo(() => {
         return Math.max(iotSessionList.length, manualSessionCounter);
     }, [iotSessionList.length, manualSessionCounter]);
 
-    // Buat Sesi Uji IoT Baru
     const handleNewIoTSession = () => {
         const nextNum = Math.max(iotSessionList.length + 1, manualSessionCounter + 1);
         setManualSessionCounter(nextNum);
         setSelectedSessionFilter('ALL');
     };
 
-    // Filter rekaman berdasarkan dropdown sesi
     const filteredRecords = useMemo(() => {
         if (selectedSessionFilter === 'ALL') return dashboard.records;
         return dashboard.records.filter(
@@ -152,7 +156,6 @@ export const IoTTestingView: React.FC = () => {
         [filteredRecords]
     );
 
-    // Hitung metrik rata-rata secara dinamis sesuai sesi yang dipilih
     const sessionMetrics = useMemo(() => {
         if (actuationRows.length === 0) {
             return {
@@ -177,7 +180,6 @@ export const IoTTestingView: React.FC = () => {
         return { avgApi, avgWifi, avgAct, avgTotal };
     }, [actuationRows]);
 
-    // Tambah baris pengukuran sensor manual (Tabel 4.18) ke sesi aktif
     const handleAddSensorMeasurement = async (e: React.FormEvent) => {
         e.preventDefault();
         const actCm = parseFloat(actualDistInput);
@@ -215,7 +217,6 @@ export const IoTTestingView: React.FC = () => {
         }
     };
 
-    // Uji satu huruf spesifik (A-Y) secara real-time ke Cloud S-GCN -> Modul IoT (Tabel 4.16 & 4.17)
     const handleTestSingleLetter = async (letter: string) => {
         setIsTestingSingleLetter(true);
         const targetDeviceKey =
@@ -264,14 +265,12 @@ export const IoTTestingView: React.FC = () => {
         }
     };
 
-    // Simulasi / Eksekusi Pengujian Fungsional Lengkap 24 Huruf SIBI (A-Y) + Sensor Modul IoT (Otomatis membuat Sesi #Baru)
     const handleRunIoTTestSuite = async () => {
         setIsSimulating(true);
         const newSessionNum = iotSessionList.length + 1;
         const sessionDeviceTag = `ESP32-SIBI-S${newSessionNum}`;
         const cloudSessionId = crypto.randomUUID();
         try {
-            // 1. Uji seluruh 24 huruf SIBI statis (A-Y) ke endpoint Cloud /predict lalu rekam aktuasi IoT (Tabel 4.16 & 4.17)
             for (let i = 0; i < REAL_SIBI_LETTERS.length; i++) {
                 const letter = REAL_SIBI_LETTERS[i];
                 const landmarks = REAL_SIBI_SAMPLES[letter];
@@ -316,7 +315,6 @@ export const IoTTestingView: React.FC = () => {
                 });
             }
 
-            // 2. Uji 5 skenario kalibrasi sensor ultrasonik HC-SR04 & cahaya LDR (Tabel 4.18)
             const sensorScenarios = [
                 { actCm: 15.0, measCm: 15.4, cond: 'Terang', lux: 460 },
                 { actCm: 25.0, measCm: 25.3, cond: 'Terang', lux: 445 },
@@ -376,7 +374,7 @@ export const IoTTestingView: React.FC = () => {
                 ? `Seluruh Sesi (${iotSessionList.length} Sesi)`
                 : `Sesi #${sessionNumberMap[selectedSessionFilter] || 1}`;
         const md = [
-            `### Tabel 4.16 Kesesuaian Output Perangkat dengan Hasil Prediksi (${sessionLabel})`,
+            `### Kesesuaian Output Perangkat dengan Hasil Prediksi (${sessionLabel})`,
             `| No. | Sesi Uji | Huruf Uji | Huruf Prediksi | Confidence | Output Speaker | Pola Getar Motor | Sesuai? |`,
             `|---|---|---|---|---|---|---|---|`,
             ...actuationRows.map((r, idx) => {
@@ -388,7 +386,7 @@ export const IoTTestingView: React.FC = () => {
                 } | ${r.vibration_pattern || '-'} | ${r.is_output_matched ? 'Ya' : 'Tidak'} |`;
             }),
             ``,
-            `### Tabel 4.17 Rincian Latensi End-to-End per Percobaan (${sessionLabel})`,
+            `### Rincian Latensi End-to-End per Percobaan (${sessionLabel})`,
             `| Percobaan | Sesi Uji | Huruf Uji | Latensi API Inferensi (ms) | Latensi WiFi ESP32 (ms) | Latensi Aktivasi Output (ms) | Total End-to-End (ms) |`,
             `|---|---|---|---|---|---|---|`,
             ...actuationRows.map((r, idx) => {
@@ -407,7 +405,7 @@ export const IoTTestingView: React.FC = () => {
                 1
             )}** | **${sessionMetrics.avgTotal.toFixed(1)}** |`,
             ``,
-            `### Tabel 4.18 Ringkasan Perbandingan Latensi End-to-End`,
+            `### Ringkasan Perbandingan Latensi End-to-End`,
             `| Komponen | Rata-rata (ms) | Kontribusi (%) |`,
             `|---|---|---|`,
             `| Latensi API inferensi (cloud) | ${sessionMetrics.avgApi.toFixed(2)} ms | ${apiShare}% |`,
@@ -415,7 +413,7 @@ export const IoTTestingView: React.FC = () => {
             `| Latensi aktivasi speaker / motor getar | ${sessionMetrics.avgAct.toFixed(2)} ms | ${actShare}% |`,
             `| **Total End-to-End** | **${sessionMetrics.avgTotal.toFixed(2)} ms** | **100%** |`,
             ``,
-            `### Tabel 4.18 (Sensor Ultrasonik HC-SR04 & Sensor Cahaya LDR)`,
+            `### Pengujian Sensor Ultrasonik HC-SR04 & Sensor Cahaya LDR`,
             `| Pengujian | Sesi Uji | Jarak Aktual (cm) | Jarak Terbaca Sensor (cm) | Selisih (cm) | Dalam Rentang 20-60 cm? | Respons LED Indikator | Kondisi Cahaya (Lux) | Status LED Bantu |`,
             `|---|---|---|---|---|---|---|---|---|`,
             ...distanceRows.map((r, idx) => {
@@ -485,7 +483,7 @@ export const IoTTestingView: React.FC = () => {
             [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
         const link = document.createElement('a');
         link.setAttribute('href', encodeURI(csvContent));
-        link.setAttribute('download', `pengujian_iot_esp32_bab4_${Date.now()}.csv`);
+        link.setAttribute('download', `pengujian_iot_esp32_${Date.now()}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -495,36 +493,38 @@ export const IoTTestingView: React.FC = () => {
         <div className="flex flex-col gap-4 sm:gap-5 w-full">
             {/* Header Panel Pengujian IoT */}
             <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-700">
-                            BAB IV — TABEL 4.16, 4.17 &amp; 4.18
-                        </span>
-                        <span className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-                            TOTAL SESI IOT: {iotSessionList.length} SESI
-                        </span>
-                        <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium rounded border ${
-                                dashboard.esp32_online
-                                    ? 'bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
-                                    : 'bg-amber-50/70 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
-                            }`}
-                        >
-                            <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                    dashboard.esp32_online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-                                }`}
-                            />
-                            {dashboard.esp32_online ? 'ESP32: CONNECTED' : 'ESP32: STANDBY / SIMULATOR'}
-                        </span>
+                <div className="flex items-start gap-3.5">
+                    <div className="hidden sm:flex w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700/80 items-center justify-center shrink-0 mt-0.5">
+                        <Cpu className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
                     </div>
-                    <h2 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                        Pengujian Fungsional Purwarupa Modul IoT (ESP32)
-                    </h2>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        Setiap eksekusi skenario uji maupun kalibrasi sensor dikelompokkan berdasarkan nomor{' '}
-                        <span className="font-mono text-zinc-700 dark:text-zinc-300">Sesi #1, Sesi #2, dst.</span>
-                    </p>
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-700">
+                                <Cpu className="w-3 h-3" />
+                                IOT EDGE &amp; SENSOR TELEMETRY
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                <Layers className="w-3 h-3" />
+                                {iotSessionList.length} SESI IOT
+                            </span>
+                            <span
+                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium rounded border ${
+                                    dashboard.esp32_online
+                                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
+                                        : 'bg-amber-50/70 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
+                                }`}
+                            >
+                                <Radio className="w-3 h-3" />
+                                {dashboard.esp32_online ? 'ESP32: CONNECTED' : 'ESP32: STANDBY / SIMULATOR'}
+                            </span>
+                        </div>
+                        <h2 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                            Pengujian Fungsional Purwarupa Modul IoT (ESP32)
+                        </h2>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            Telemetri keluaran Speaker DFPlayer Mini, Motor Getar Haptik, Latensi End-to-End per huruf (A–Y), Sensor Ultrasonik HC-SR04, dan Cahaya LDR.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
@@ -563,7 +563,7 @@ export const IoTTestingView: React.FC = () => {
                         ) : (
                             <>
                                 <Copy className="w-3.5 h-3.5" />
-                                <span>Salin Tabel 4.16–4.18</span>
+                                <span>Salin Ringkasan</span>
                             </>
                         )}
                     </button>
@@ -628,14 +628,16 @@ export const IoTTestingView: React.FC = () => {
                 </div>
             </div>
 
-            {/* 4 Kartu KPI Seragam Status Sensor & Latensi End-to-End IoT */}
+            {/* 4 Kartu KPI Seragam dengan Ikon Terstruktur */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="bg-white dark:bg-[#111113] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Jarak Sensor (HC-SR04)
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Ruler className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {dashboard.latest_distance_cm != null
@@ -655,7 +657,9 @@ export const IoTTestingView: React.FC = () => {
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Cahaya (LDR) &amp; LED Bantu
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Sun className="w-3.5 h-3.5 text-amber-500" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {dashboard.latest_lux != null ? dashboard.latest_lux.toFixed(0) : '-'}
@@ -673,7 +677,9 @@ export const IoTTestingView: React.FC = () => {
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Latensi WiFi + Aktuasi
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Wifi className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {(sessionMetrics.avgWifi + sessionMetrics.avgAct).toFixed(1)}
@@ -689,7 +695,9 @@ export const IoTTestingView: React.FC = () => {
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Total End-to-End
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {sessionMetrics.avgTotal.toFixed(1)}
@@ -703,10 +711,11 @@ export const IoTTestingView: React.FC = () => {
 
             {/* Grid 2 Kolom: Ringkasan Latensi End-to-End & Form Kalibrasi Sensor */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Tabel Ringkasan Kontribusi Latensi End-to-End */}
+                {/* Ringkasan Kontribusi Latensi End-to-End */}
                 <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                    <h3 className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-3">
-                        Ringkasan Distribusi Latensi End-to-End (Tabel 4.17 / 4.18)
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-zinc-500" />
+                        <span>Ringkasan Distribusi Latensi End-to-End</span>
                     </h3>
                     <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
                         <table className="w-full text-left border-collapse text-xs">
@@ -745,13 +754,13 @@ export const IoTTestingView: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Form Pencatatan Kalibrasi Sensor Jarak & Cahaya (Tabel 4.18) */}
+                {/* Form Pencatatan Kalibrasi Sensor Jarak & Cahaya */}
                 <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col justify-between">
                     <div>
                         <div className="flex items-center justify-between mb-1">
-                            <h3 className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                                <PlusCircle className="w-3.5 h-3.5" />
-                                <span>Input Kalibrasi Sensor Fisik (Tabel 4.18)</span>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+                                <PlusCircle className="w-4 h-4 text-zinc-500" />
+                                <span>Input Kalibrasi Sensor Fisik</span>
                             </h3>
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                                 Target: Sesi #{selectedSessionFilter !== 'ALL' ? sessionNumberMap[selectedSessionFilter] || 1 : Math.max(1, activeSessionNumber)}
@@ -817,23 +826,28 @@ export const IoTTestingView: React.FC = () => {
                                 type="submit"
                                 className="w-full py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-900 font-medium text-xs cursor-pointer transition-colors"
                             >
-                                + Tambahkan ke Tabel Pengujian Sensor (Tabel 4.18)
+                                + Tambahkan Data Pengukuran Sensor
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            {/* Tabel 4.16 & 4.17: Kesesuaian Output Perangkat & Rincian Latensi per Huruf */}
+            {/* Pengujian Per Huruf: Kesesuaian Output Perangkat & Rincian Latensi End-to-End */}
             <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-                    <div>
-                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">
-                            Tabel 4.16 &amp; 4.17 — Pengujian Per Huruf (A–Y): Output Speaker, Motor Getar &amp; Latensi End-to-End
-                        </h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                            Mencocokkan huruf hasil prediksi S-GCN (24 huruf statis A–Y) terhadap file audio DFPlayer Mini (0001.mp3–0025.mp3) dan pola getar haptik ESP32.
-                        </p>
+                    <div className="flex items-start gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700/80 flex items-center justify-center shrink-0 mt-0.5">
+                            <Volume2 className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">
+                                Pengujian Per Huruf (A–Y): Output Speaker, Motor Getar &amp; Latensi End-to-End
+                            </h3>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Mencocokkan huruf hasil prediksi S-GCN (24 huruf statis A–Y) terhadap file audio DFPlayer Mini (0001.mp3–0025.mp3) dan pola getar haptik ESP32.
+                            </p>
+                        </div>
                     </div>
 
                     {/* Kontrol Uji Per Huruf Tunggal (Manual / Interaktif) */}
@@ -881,7 +895,7 @@ export const IoTTestingView: React.FC = () => {
                             {actuationRows.length === 0 ? (
                                 <tr>
                                     <td colSpan={10} className="py-8 text-center text-zinc-400 dark:text-zinc-500 font-mono text-xs">
-                                        Belum ada data aktuasi IoT. Klik tombol &quot;Rekam Skenario Uji IoT&quot; di atas atau nyalakan ESP32.
+                                        Belum ada data aktuasi IoT. Klik tombol &quot;Uji 24 Huruf (A–Y) &amp; Sensor&quot; di atas atau nyalakan ESP32.
                                     </td>
                                 </tr>
                             ) : (
@@ -912,7 +926,10 @@ export const IoTTestingView: React.FC = () => {
                                                 {r.confidence != null ? `${(r.confidence * 100).toFixed(1)}%` : '-'}
                                             </td>
                                             <td className="py-2 px-3 font-mono text-zinc-600 dark:text-zinc-300">
-                                                {r.speaker_output || '-'}
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
+                                                    {r.speaker_output || '-'}
+                                                </span>
                                             </td>
                                             <td className="py-2 px-3">
                                                 <span
@@ -922,6 +939,7 @@ export const IoTTestingView: React.FC = () => {
                                                             : 'bg-amber-50/70 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
                                                     }`}
                                                 >
+                                                    <Vibrate className="w-3 h-3" />
                                                     {r.vibration_pattern || '-'}
                                                 </span>
                                             </td>
@@ -943,14 +961,21 @@ export const IoTTestingView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Tabel 4.18: Fungsi Sensor Input (Ultrasonik HC-SR04 dan Sensor Cahaya LDR) */}
+            {/* Pengujian Fungsi Sensor Input (Ultrasonik HC-SR04 dan Sensor Cahaya LDR) */}
             <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">
-                    Tabel 4.18 — Pengujian Fungsi Sensor Input (Ultrasonik HC-SR04 &amp; Cahaya LDR)
-                </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                    Evaluasi selisih pembacaan jarak ultrasonik (rentang ideal 20–60 cm) dan pemicuan otomatis LED bantu saat intensitas cahaya di bawah 150 Lux.
-                </p>
+                <div className="flex items-start gap-2.5 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700/80 flex items-center justify-center shrink-0 mt-0.5">
+                        <Ruler className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">
+                            Pengujian Fungsi Sensor Input (Ultrasonik HC-SR04 &amp; Cahaya LDR)
+                        </h3>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            Evaluasi selisih pembacaan jarak ultrasonik (rentang ideal 20–60 cm) dan pemicuan otomatis LED bantu saat intensitas cahaya di bawah 150 Lux.
+                        </p>
+                    </div>
+                </div>
                 <div className="overflow-x-auto max-h-[300px] overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
                     <table className="w-full text-left border-collapse text-xs">
                         <thead className="bg-zinc-50 dark:bg-[#18181B] border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 sticky top-0 z-10">
@@ -970,7 +995,7 @@ export const IoTTestingView: React.FC = () => {
                             {distanceRows.length === 0 ? (
                                 <tr>
                                     <td colSpan={9} className="py-8 text-center text-zinc-400 dark:text-zinc-500 text-xs">
-                                        Belum ada data pengukuran sensor. Gunakan form di atas atau klik &quot;Rekam Skenario Uji IoT&quot;.
+                                        Belum ada data pengukuran sensor. Gunakan form di atas atau klik &quot;Uji 24 Huruf (A–Y) &amp; Sensor&quot;.
                                     </td>
                                 </tr>
                             ) : (
@@ -1012,9 +1037,12 @@ export const IoTTestingView: React.FC = () => {
                                                 {r.led_indicator_status || '-'}
                                             </td>
                                             <td className="py-2 px-3 font-sans">
-                                                {r.light_condition || '-'}{' '}
-                                                <span className="font-mono text-zinc-500">
-                                                    ({r.measured_lux?.toFixed(0)} lx)
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Sun className="w-3.5 h-3.5 text-amber-500" />
+                                                    {r.light_condition || '-'}{' '}
+                                                    <span className="font-mono text-zinc-500">
+                                                        ({r.measured_lux?.toFixed(0)} lx)
+                                                    </span>
                                                 </span>
                                             </td>
                                             <td className="py-2 px-3 font-sans font-medium text-zinc-900 dark:text-zinc-100">

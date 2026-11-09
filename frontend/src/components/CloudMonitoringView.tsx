@@ -1,12 +1,17 @@
 /**
  * components/CloudMonitoringView.tsx
- * Halaman/Tab Monitoring & Log Pengujian Cloud (RM4 - Bab IV Skripsi).
+ * Halaman/Tab Monitoring & Log Pengujian Cloud.
  * Dilengkapi manajemen Sesi Pengujian (Sesi #1, Sesi #2, dst.), filter per sesi,
- * kalkulasi metrik dinamis per sesi, serta estetika dashboard observabilitas teknis.
+ * kalkulasi metrik dinamis per sesi, serta hierarki visual ikon yang jelas.
  */
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
+    Activity,
+    Clock,
+    Zap,
+    Server,
+    Gauge,
     CheckCircle2,
     XCircle,
     Download,
@@ -17,6 +22,9 @@ import {
     Check,
     Layers,
     Plus,
+    Database,
+    Vibrate,
+    Sun,
 } from 'lucide-react';
 import {
     getMonitoringLogsApi,
@@ -49,7 +57,6 @@ interface SessionMeta {
     firstTimestamp: string;
 }
 
-// Fungsi hitung persentil
 const calcPercentile = (arr: number[], p: number): number => {
     if (arr.length === 0) return 0;
     const sorted = [...arr].sort((a, b) => a - b);
@@ -77,7 +84,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
     );
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // State untuk Benchmark Otomatis RM4 (Tabel 4.13, 4.14, 4.15)
     const [isBenchmarking, setIsBenchmarking] = useState<boolean>(false);
     const [benchmarkProgress, setBenchmarkProgress] = useState<string>('');
     const [concurrencyResults, setConcurrencyResults] = useState<ConcurrencyBenchmarkRow[]>([]);
@@ -87,7 +93,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         setIsLoading(true);
         setErrorMsg(null);
         try {
-            // Ambil seluruh log (hingga 500) agar pemetaan nomor urut Sesi #1, #2, dst. akurat
             const data = await getMonitoringLogsApi(undefined, 500);
             setStats(data);
         } catch (err) {
@@ -109,7 +114,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
     // Bangun daftar sesi pengujian secara kronologis (Sesi #1, Sesi #2, ...)
     const sessionMetaList = useMemo<SessionMeta[]>(() => {
         const map = new Map<string, { count: number; earliest: string }>();
-        // Urutkan dari paling lama ke paling baru berdasarkan created_at
         const chronological = [...stats.logs].sort(
             (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
@@ -142,7 +146,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         return list;
     }, [stats.logs, currentSessionId]);
 
-    // Peta cepat session_id -> nomor urut sesi (1, 2, 3...)
     const sessionNumberMap = useMemo<Record<string, number>>(() => {
         const rec: Record<string, number> = {};
         for (const meta of sessionMetaList) {
@@ -151,7 +154,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         return rec;
     }, [sessionMetaList]);
 
-    // Nomor sesi berikutnya untuk pengujian baru
     const nextSessionNumber = useMemo(() => {
         if (sessionNumberMap[activeBenchSessionId]) {
             return sessionNumberMap[activeBenchSessionId];
@@ -159,13 +161,11 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         return sessionMetaList.length + 1;
     }, [sessionMetaList, sessionNumberMap, activeBenchSessionId]);
 
-    // Filter log berdasarkan dropdown sesi yang dipilih
     const filteredLogs = useMemo(() => {
         if (selectedSessionFilter === 'ALL') return stats.logs;
         return stats.logs.filter((l) => l.session_id === selectedSessionFilter);
     }, [stats.logs, selectedSessionFilter]);
 
-    // Hitung ulang metrik KPI secara dinamis sesuai sesi yang dipilih
     const displayStats = useMemo(() => {
         if (selectedSessionFilter === 'ALL' || filteredLogs.length === 0) {
             if (selectedSessionFilter !== 'ALL' && filteredLogs.length === 0) {
@@ -203,14 +203,12 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         };
     }, [selectedSessionFilter, filteredLogs, stats]);
 
-    // Buat Sesi Uji Baru secara eksplisit
     const handleCreateNewTestSession = () => {
         const newSid = crypto.randomUUID();
         setActiveBenchSessionId(newSid);
         setSelectedSessionFilter('ALL');
     };
 
-    // Handler verifikasi Benar / Salah pada baris log (untuk Tabel 4.16)
     const handleFeedback = async (translationId: number, isCorrect: boolean) => {
         let correctedLabel: string | undefined = undefined;
         if (!isCorrect) {
@@ -226,7 +224,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         }
     };
 
-    // Handler hapus riwayat log (per sesi atau semua sesi)
     const handleClearLogs = async () => {
         const isSpecific = selectedSessionFilter !== 'ALL';
         const targetLabel = isSpecific
@@ -243,12 +240,10 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         }
     };
 
-    // Menjalankan simulasi benchmark RM4 langsung dari browser ke server
     const runCloudBenchmark = async () => {
         setIsBenchmarking(true);
         setErrorMsg(null);
 
-        // Jika sesi uji saat ini sudah memiliki rekaman, otomatis buat sesi uji baru agar rapi per sesi
         const targetBenchSession =
             sessionNumberMap[activeBenchSessionId] != null
                 ? crypto.randomUUID()
@@ -327,7 +322,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         }
     };
 
-    // Export riwayat log ke CSV (lengkap dengan kolom Sesi_Ke)
     const handleExportCsv = () => {
         if (filteredLogs.length === 0) return;
         const headers = [
@@ -387,7 +381,6 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         document.body.removeChild(link);
     };
 
-    // Kalkulasi estimasi biaya operasional Railway (Tabel 4.15)
     const avgSec = (displayStats.avg_latency_ms || 45) / 1000;
     const ramGb = (displayStats.server_memory_mb || 245) / 1024;
     const vcpuSec = avgSec * 1.0;
@@ -396,14 +389,13 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
     const costPer1000Usd = costPerReqUsd * 1000;
     const costMonthlyUsd = costPer1000Usd * 30;
 
-    // Salin format Markdown Tabel 4.13, 4.14, 4.15 untuk ditempel ke Skripsi
     const handleCopyMarkdown = () => {
         const sessionTitle =
             selectedSessionFilter === 'ALL'
                 ? `Seluruh Sesi (${sessionMetaList.length} Sesi)`
                 : `Sesi #${sessionNumberMap[selectedSessionFilter] || 1}`;
         const md = [
-            `### Tabel 4.13 Metrik Performa Permintaan Tunggal (${sessionTitle})`,
+            `### Metrik Performa Permintaan Tunggal (${sessionTitle})`,
             `| Metrik | Nilai |`,
             `|---|---|`,
             `| Latensi rata-rata (ms) | ${displayStats.avg_latency_ms.toFixed(2)} ms |`,
@@ -411,7 +403,7 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
             `| Latensi persentil ke-95 / p95 (ms) | ${displayStats.p95_latency_ms.toFixed(2)} ms |`,
             `| Penggunaan memori saat aktif (MB) | ${displayStats.server_memory_mb.toFixed(1)} MB |`,
             ``,
-            `### Tabel 4.14 Performa di Bawah Beban Bersamaan (Concurrent)`,
+            `### Performa di Bawah Beban Bersamaan (Concurrent)`,
             `| Jumlah Request Concurrent | Throughput (req/detik) | Latensi p50 (ms) | Latensi p95 (ms) | Error Rate |`,
             `|---|---|---|---|---|`,
             ...(concurrencyResults.length > 0
@@ -423,7 +415,7 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                       `| 1 | - | ${displayStats.p50_latency_ms.toFixed(2)} | ${displayStats.p95_latency_ms.toFixed(2)} | 0.0% |`,
                   ]),
             ``,
-            `### Tabel 4.15 Estimasi Biaya Operasional`,
+            `### Estimasi Biaya Operasional`,
             `| Komponen | Nilai |`,
             `|---|---|`,
             `| Compute time terpakai per request (vCPU-detik) | ${vcpuSec.toFixed(5)} |`,
@@ -441,26 +433,31 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
         <div className="flex flex-col gap-4 sm:gap-5 w-full">
             {/* Panel Header Kontrol */}
             <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-700">
-                            BAB IV — RM4 CLOUD TELEMETRY
-                        </span>
-                        <span className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
-                            TOTAL SESI TERCATAT: {sessionMetaList.length} SESI
-                        </span>
-                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono hidden sm:inline">
-                            {API_BASE_URL}
-                        </span>
+                <div className="flex items-start gap-3.5">
+                    <div className="hidden sm:flex w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700/80 items-center justify-center shrink-0 mt-0.5">
+                        <Server className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
                     </div>
-                    <h2 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                        Observabilitas &amp; Benchmark Inferensi Cloud S-GCN
-                    </h2>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        Setiap eksekusi uji beban otomatis maupun sesi kamera direkam ke dalam nomor urut{' '}
-                        <span className="font-mono text-zinc-700 dark:text-zinc-300">Sesi #1, Sesi #2, dst.</span>{' '}
-                        secara terpisah.
-                    </p>
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-700">
+                                <Activity className="w-3 h-3" />
+                                CLOUD INFERENCE TELEMETRY
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                                <Layers className="w-3 h-3" />
+                                {sessionMetaList.length} SESI TERCATAT
+                            </span>
+                            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono hidden sm:inline">
+                                {API_BASE_URL}
+                            </span>
+                        </div>
+                        <h2 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                            Observabilitas &amp; Benchmark Inferensi Cloud S-GCN
+                        </h2>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            Evaluasi kuantitatif latensi permintaan tunggal, throughput beban konkuren (1, 10, 50), dan pemakaian sumber daya kontainer per sesi.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
@@ -498,7 +495,7 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                         ) : (
                             <>
                                 <Copy className="w-3.5 h-3.5" />
-                                <span>Salin Tabel Bab IV</span>
+                                <span>Salin Ringkasan</span>
                             </>
                         )}
                     </button>
@@ -536,18 +533,16 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                 </div>
             )}
 
-            {/* 5 Kartu KPI Metrik Seragam (Otomatis menyesuaikan Sesi yang dipilih) */}
+            {/* 5 Kartu KPI Metrik dengan Ikon Terstruktur */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div className="bg-white dark:bg-[#111113] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Total Request
                         </span>
-                        <span className="text-[10px] font-mono text-zinc-400">
-                            {selectedSessionFilter === 'ALL'
-                                ? 'ALL'
-                                : `S#${sessionNumberMap[selectedSessionFilter] || 1}`}
-                        </span>
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Activity className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {displayStats.total_logs}
@@ -562,7 +557,9 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Latensi Rata-rata
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {displayStats.avg_latency_ms.toFixed(1)}
@@ -578,7 +575,9 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Median (p50)
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Gauge className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {displayStats.p50_latency_ms.toFixed(1)}
@@ -594,7 +593,9 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             Tail Latency (p95)
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Zap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {displayStats.p95_latency_ms.toFixed(1)}
@@ -610,7 +611,9 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                         <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                             RAM Kontainer
                         </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500" />
+                        <div className="w-7 h-7 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center">
+                            <Server className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+                        </div>
                     </div>
                     <p className="text-2xl font-semibold tracking-tight font-mono tabular-nums text-zinc-900 dark:text-zinc-100 mt-2">
                         {displayStats.server_memory_mb.toFixed(1)}
@@ -622,12 +625,13 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                 </div>
             </div>
 
-            {/* Tabel Hasil Uji Beban Concurrent (Tabel 4.14) jika sudah dijalankan */}
+            {/* Hasil Uji Beban Concurrent jika sudah dijalankan */}
             {concurrencyResults.length > 0 && (
                 <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                            Tabel 4.14 — Hasil Pengujian Beban Bersamaan (Concurrent Load)
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-amber-500" />
+                            <span>Hasil Pengujian Beban Bersamaan (Concurrent Load)</span>
                         </h3>
                         <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
                             COMPLETED
@@ -667,16 +671,21 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                 </div>
             )}
 
-            {/* Tabel Riwayat Log Inferensi Real-Time dengan Kolom & Filter Sesi Pengujian */}
+            {/* Tabel Riwayat Log Inferensi Real-Time */}
             <div className="bg-white dark:bg-[#111113] p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-                    <div>
-                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                            Riwayat Rekaman Aksi &amp; Inferensi Cloud
-                        </h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                            Pilih sesi pengujian pada dropdown di kanan untuk memisahkan data antar pengambilan sampel.
-                        </p>
+                    <div className="flex items-start gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700/80 flex items-center justify-center shrink-0 mt-0.5">
+                            <Database className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                Riwayat Rekaman Aksi &amp; Inferensi Cloud
+                            </h3>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Pilih sesi pengujian pada dropdown di kanan untuk memisahkan data antar pengambilan sampel.
+                            </p>
+                        </div>
                     </div>
 
                     {/* Dropdown Pemilih Sesi Pengujian */}
@@ -781,7 +790,10 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                                                 {log.memory_mb ?? displayStats.server_memory_mb} MB
                                             </td>
                                             <td className="py-2 px-3 font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
-                                                {log.lux ? `${log.lux} lx` : '-'} / {log.hand_scale || '-'}
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Sun className="w-3 h-3 text-amber-500" />
+                                                    {log.lux ? `${log.lux} lx` : '-'} / {log.hand_scale || '-'}
+                                                </span>
                                             </td>
                                             <td className="py-2 px-3">
                                                 <span
@@ -791,11 +803,7 @@ export const CloudMonitoringView: React.FC<CloudMonitoringViewProps> = ({ curren
                                                             : 'bg-amber-50/70 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
                                                     }`}
                                                 >
-                                                    <span
-                                                        className={`w-1.5 h-1.5 rounded-full ${
-                                                            isHighConf ? 'bg-emerald-500' : 'bg-amber-500'
-                                                        }`}
-                                                    />
+                                                    <Vibrate className="w-3 h-3" />
                                                     {isHighConf ? 'Getar Pendek (OK)' : 'Getar Panjang'}
                                                 </span>
                                             </td>
