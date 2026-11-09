@@ -93,3 +93,50 @@ class FeedbackRequest(BaseModel):
     translation_id: int
     is_correct: bool
     corrected_label: str | None = None
+
+
+# ---------- IoT Telemetry & Pengujian (Tabel 4.16, 4.17, 4.18) ----------
+
+class IoTTelemetryRequest(BaseModel):
+    translation_id: int | None = None
+    device_id: str = "esp32-sibi-01"
+
+    actual_distance_cm: float | None = None
+    measured_distance_cm: float | None = None
+    distance_in_range: bool | None = None
+    led_indicator_status: str | None = None
+
+    light_condition: str | None = None
+    measured_lux: float | None = None
+    lux_threshold: float | None = 150.0
+    helper_led_status: str | None = None
+
+    target_letter: str | None = None
+    predicted_letter: str | None = None
+    confidence: float | None = None
+    speaker_output: str | None = None
+    vibration_pattern: str | None = None
+    is_output_matched: bool | None = None
+
+    api_latency_ms: float | None = None
+    wifi_latency_ms: float | None = None
+    actuation_latency_ms: float | None = None
+    total_e2e_ms: float | None = None
+
+
+class IoTTelemetryItem(IoTTelemetryRequest):
+    id: int
+    created_at: datetime
+
+
+class IoTDashboardResponse(BaseModel):
+    esp32_online: bool
+    last_seen_at: datetime | None = None
+    latest_distance_cm: float | None = None
+    latest_lux: float | None = None
+    helper_led_status: str | None = None
+    avg_api_latency_ms: float
+    avg_wifi_latency_ms: float
+    avg_actuation_latency_ms: float
+    avg_total_e2e_ms: float
+    records: list[IoTTelemetryItem]

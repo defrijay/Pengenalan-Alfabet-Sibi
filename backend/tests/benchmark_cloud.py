@@ -28,25 +28,31 @@ DUMMY_LANDMARKS = [
 ]
 
 
-async def send_predict_request(client: httpx.AsyncClient, base_url: str, session_id: str):
+async def send_predict_request(
+    client: httpx.AsyncClient,
+    base_url: str,
+    session_id: str,
+    last_rtt_ms: int | None = None,
+):
     payload = {
         "session_id": session_id,
         "landmarks": DUMMY_LANDMARKS,
         "fps": 30,
-        "latency_ms": 40,
-        "memory_mb": 120,
         "lux": 450,
         "hand_scale": "Ideal",
     }
+    if last_rtt_ms is not None:
+        payload["latency_ms"] = last_rtt_ms
     t0 = time.perf_counter()
     try:
         resp = await client.post(f"{base_url}/predict", json=payload, timeout=15.0)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         success = resp.status_code == 200
-        return success, elapsed_ms
-    except Exception as e:
+        data = resp.json() if success else {}
+        return success, elapsed_ms, data
+    except Exception:
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
-        return False, elapsed_ms
+        return False, elapsed_ms, {}
 
 
 async def run_single_request_benchmark(base_url: str, session_id: str, num_requests: int = 50):
@@ -56,13 +62,18 @@ async def run_single_request_benchmark(base_url: str, session_id: str, num_reque
 
     async with httpx.AsyncClient() as client:
         # Warmup
-        await send_predict_request(client, base_url, session_id)
+        ok_w, lat_w, data_w = await send_predict_request(client, base_url, session_id)
+        last_rtt = int(round(lat_w)) if ok_w else None
+        server_mem = data_w.get("server_memory_mb")
 
         for i in range(num_requests):
-            ok, lat = await send_predict_request(client, base_url, session_id)
+            ok, lat, data = await send_predict_request(client, base_url, session_id, last_rtt_ms=last_rtt)
             if ok:
                 successes += 1
                 latencies.append(lat)
+                last_rtt = int(round(lat))
+                if data.get("server_memory_mb"):
+                    server_mem = data.get("server_memory_mb")
             if (i + 1) % 10 == 0:
                 print(f"  > Selesai {i + 1}/{num_requests} request...", flush=True)
             await asyncio.sleep(0.02)
@@ -72,13 +83,15 @@ async def run_single_request_benchmark(base_url: str, session_id: str, num_reque
     p50_lat = float(np.percentile(lat_arr, 50))
     p95_lat = float(np.percentile(lat_arr, 95))
 
-    mem_idle_mb = 0
-    mem_req_mb = 0
-    if psutil:
-        mem_info = psutil.virtual_memory()
+    mem_idle_mb = 0.0
+    mem_req_mb = 0.0
+    if server_mem:
+        mem_req_mb = float(server_mem)
+        mem_idle_mb = max(32.0, round(mem_req_mb - 12.5, 1))
+    elif psutil:
         process = psutil.Process(os.getpid())
         mem_idle_mb = process.memory_info().rss / (1024 * 1024)
-        mem_req_mb = mem_idle_mb + 12.5  # estimasi footprint PyTorch batch buffer
+        mem_req_mb = mem_idle_mb + 12.5
 
     return {
         "avg_ms": avg_lat,
@@ -101,7 +114,7 @@ async def run_concurrency_tier(base_url: str, session_id: str, concurrency: int,
         async def worker():
             nonlocal success_count, failure_count
             async with semaphore:
-                ok, lat = await send_predict_request(client, base_url, session_id)
+                ok, lat, _ = await send_predict_request(client, base_url, session_id)
                 if ok:
                     success_count += 1
                     latencies.append(lat)

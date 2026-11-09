@@ -132,3 +132,30 @@ def clear_translation_logs(
     deleted = query.delete(synchronize_session=False)
     db.commit()
     return deleted
+
+
+def log_iot_telemetry(
+    db: DBSession, payload_dict: dict
+) -> models.IoTTelemetry:
+    record = models.IoTTelemetry(**payload_dict)
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def get_iot_telemetry_logs(
+    db: DBSession, limit: int = 100
+) -> list[models.IoTTelemetry]:
+    return (
+        db.query(models.IoTTelemetry)
+        .order_by(models.IoTTelemetry.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def clear_iot_telemetry_logs(db: DBSession) -> int:
+    deleted = db.query(models.IoTTelemetry).delete(synchronize_session=False)
+    db.commit()
+    return deleted

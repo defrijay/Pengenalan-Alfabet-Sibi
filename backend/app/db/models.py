@@ -95,3 +95,39 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     translation = relationship("Translation", back_populates="feedback")
+
+
+class IoTTelemetry(Base):
+    """Rekaman pengujian modul IoT ESP32 (sensor jarak, cahaya, speaker, motor getar, dan latensi fisik)."""
+
+    __tablename__ = "iot_telemetry"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    translation_id = Column(Integer, ForeignKey("translations.id"), nullable=True)
+    device_id = Column(String(64), default="esp32-sibi-01", nullable=False)
+
+    # Sensor Input (Tabel 4.18)
+    actual_distance_cm = Column(Float, nullable=True)
+    measured_distance_cm = Column(Float, nullable=True)
+    distance_in_range = Column(Boolean, nullable=True)
+    led_indicator_status = Column(String(32), nullable=True)
+
+    light_condition = Column(String(32), nullable=True)  # Terang / Redup / Gelap
+    measured_lux = Column(Float, nullable=True)
+    lux_threshold = Column(Float, default=150.0, nullable=True)
+    helper_led_status = Column(String(32), nullable=True)  # Mati / Menyala
+
+    # Aktuator Output & Latensi End-to-End (Tabel 4.16 & 4.17)
+    target_letter = Column(String(1), nullable=True)
+    predicted_letter = Column(String(1), nullable=True)
+    confidence = Column(Float, nullable=True)
+    speaker_output = Column(String(64), nullable=True)
+    vibration_pattern = Column(String(32), nullable=True)  # Pendek / Panjang
+    is_output_matched = Column(Boolean, nullable=True)
+
+    api_latency_ms = Column(Float, nullable=True)
+    wifi_latency_ms = Column(Float, nullable=True)
+    actuation_latency_ms = Column(Float, nullable=True)
+    total_e2e_ms = Column(Float, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

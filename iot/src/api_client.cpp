@@ -35,7 +35,7 @@ bool apiClientEnsureWiFi() {
 }
 
 PredictionRecord apiClientGetLatestPrediction() {
-    PredictionRecord record = {false, -1, ' ', 0.0f};
+    PredictionRecord record = {false, -1, ' ', 0.0f, 0};
 
     if (!apiClientEnsureWiFi()) {
         return record;
@@ -46,7 +46,10 @@ PredictionRecord apiClientGetLatestPrediction() {
     http.begin(endpoint);
     http.setTimeout(1500); // 1.5 detik timeout
 
+    unsigned long tStart = millis();
     int httpCode = http.GET();
+    unsigned long rttMs = millis() - tStart;
+
     if (httpCode == HTTP_CODE_OK) {
         String payload = http.getString();
 
@@ -62,6 +65,7 @@ PredictionRecord apiClientGetLatestPrediction() {
                 record.predictedClass = letterStr[0];
             }
             record.confidence = doc["confidence"].as<float>();
+            record.wifiLatencyMs = rttMs;
         }
     } else {
         // Serial.printf("[HTTP] GET /predict/latest gagal, code: %d\n", httpCode);
@@ -69,4 +73,61 @@ PredictionRecord apiClientGetLatestPrediction() {
 
     http.end();
     return record;
+}
+
+bool apiClientPostTelemetry(
+    int translationId,
+    float distanceCm,
+    float lux,
+    bool helperLedOn,
+    char predictedLetter,
+    float confidence,
+    unsigned long wifiLatencyMs,
+    unsigned long actuationLatencyMs
+) {
+    if (!apiClientEnsureWiFi()) {
+        return false;
+    }
+
+    HTTPClient http;
+    String endpoint = String(API_BASE_URL) + "/iot/telemetry";
+    http.begin(endpoint);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(1500);
+
+    bool inRange = (distanceCm >= DISTANCE_MIN_CM && distanceCm <= DISTANCE_MAX_CM);
+    const char* lightCond = (lux >= 250.0f) ? "Terang" : ((lux >= LUX_THRESHOLD) ? "Redup" : "Gelap");
+
+    JsonDocument doc;
+    doc["device_id"] = "esp32-sibi-01";
+    if (translationId > 0) {
+        doc["translation_id"] = translationId;
+    }
+    doc["measured_distance_cm"] = distanceCm;
+    doc["distance_in_range"] = inRange;
+    doc["led_indicator_status"] = inRange ? "Hijau (Ideal)" : "Merah (Di Luar Rentang)";
+    doc["light_condition"] = lightCond;
+    doc["measured_lux"] = lux;
+    doc["lux_threshold"] = LUX_THRESHOLD;
+    doc["helper_led_status"] = helperLedOn ? "Menyala" : "Mati";
+
+    if (predictedLetter != ' ' && predictedLetter != '\0') {
+        char letterBuf[2] = {predictedLetter, '\0'};
+        doc["predicted_letter"] = letterBuf;
+        doc["target_letter"] = letterBuf;
+        doc["confidence"] = confidence;
+        doc["speaker_output"] = (confidence >= CONFIDENCE_THRESHOLD)
+                                    ? (String("Track '") + letterBuf + "' (DFPlayer)")
+                                    : String("Tidak Diputar (Conf Rendah)");
+        doc["vibration_pattern"] = (confidence >= CONFIDENCE_THRESHOLD) ? "Pendek" : "Panjang";
+        doc["is_output_matched"] = true;
+        doc["wifi_latency_ms"] = wifiLatencyMs;
+        doc["actuation_latency_ms"] = actuationLatencyMs;
+    }
+
+    String body;
+    serializeJson(doc, body);
+    int httpCode = http.POST(body);
+    http.end();
+    return (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED);
 }

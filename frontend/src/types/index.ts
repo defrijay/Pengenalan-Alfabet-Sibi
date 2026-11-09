@@ -67,6 +67,47 @@ export interface MonitoringStatsResponse {
     logs: TranslationLogItem[];
 }
 
+export interface IoTTelemetryRequestPayload {
+    translation_id?: number | null;
+    device_id?: string;
+    actual_distance_cm?: number | null;
+    measured_distance_cm?: number | null;
+    distance_in_range?: boolean | null;
+    led_indicator_status?: string | null;
+    light_condition?: string | null;
+    measured_lux?: number | null;
+    lux_threshold?: number | null;
+    helper_led_status?: string | null;
+    target_letter?: string | null;
+    predicted_letter?: string | null;
+    confidence?: number | null;
+    speaker_output?: string | null;
+    vibration_pattern?: string | null;
+    is_output_matched?: boolean | null;
+    api_latency_ms?: number | null;
+    wifi_latency_ms?: number | null;
+    actuation_latency_ms?: number | null;
+    total_e2e_ms?: number | null;
+}
+
+export interface IoTTelemetryItem extends IoTTelemetryRequestPayload {
+    id: number;
+    created_at: string;
+}
+
+export interface IoTDashboardResponse {
+    esp32_online: boolean;
+    last_seen_at?: string | null;
+    latest_distance_cm?: number | null;
+    latest_lux?: number | null;
+    helper_led_status?: string | null;
+    avg_api_latency_ms: number;
+    avg_wifi_latency_ms: number;
+    avg_actuation_latency_ms: number;
+    avg_total_e2e_ms: number;
+    records: IoTTelemetryItem[];
+}
+
 export interface LatestPredictionResponse {
     translation_id?: number | null;
     predicted_class?: string | null;

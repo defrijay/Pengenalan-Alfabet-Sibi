@@ -53,7 +53,7 @@ void loop() {
 
     // 1. Pembaruan otomatis sensor bantu pencahayaan
     // Jika ruangan redup (< LUX_THRESHOLD), LED bantu otomatis menyala menerangi tangan
-    lightSensorAutoUpdate();
+    bool helperLedOn = lightSensorAutoUpdate();
 
     // 2. Logging status sensor jarak berkala (setiap 2 detik ke Serial Monitor)
     if (currentMillis - lastSensorPrintTime >= 2000) {
@@ -77,6 +77,8 @@ void loop() {
             Serial.printf("[Aktuasi] Huruf Baru Diterima: '%c' | Confidence: %.2f (ID: %d)\n",
                           rec.predictedClass, rec.confidence, rec.translationId);
 
+            unsigned long tActStart = millis();
+
             // A. Umpan balik haptik untuk pengisyarat (Tunarungu)
             vibrationFeedbackByConfidence(rec.confidence);
 
@@ -84,6 +86,22 @@ void loop() {
             if (rec.confidence >= CONFIDENCE_THRESHOLD) {
                 speakerPlayLetter(rec.predictedClass);
             }
+
+            unsigned long actuationMs = millis() - tActStart;
+            float distNow = ultrasonicReadDistanceCm();
+            float luxNow = lightSensorReadLux();
+
+            // C. Kirim laporan telemetri aktuasi & sensor ke Web Dashboard Bab IV
+            apiClientPostTelemetry(
+                rec.translationId,
+                distNow,
+                luxNow,
+                helperLedOn,
+                rec.predictedClass,
+                rec.confidence,
+                rec.wifiLatencyMs,
+                actuationMs
+            );
         }
     }
 }

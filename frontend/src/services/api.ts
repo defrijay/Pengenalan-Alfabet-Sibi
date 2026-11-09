@@ -11,6 +11,9 @@ import type {
     SessionEndResponse,
     LatestPredictionResponse,
     MonitoringStatsResponse,
+    IoTTelemetryRequestPayload,
+    IoTTelemetryItem,
+    IoTDashboardResponse,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -124,6 +127,45 @@ export async function clearMonitoringLogsApi(
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) {
         throw new Error(`Gagal menghapus log monitoring: HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+/**
+ * Mengambil data telemetri dan pengujian modul IoT ESP32 (Tabel 4.16, 4.17, 4.18).
+ */
+export async function getIoTTelemetryApi(limit: number = 100): Promise<IoTDashboardResponse> {
+    const res = await fetch(`${API_BASE_URL}/iot/telemetry?limit=${limit}`);
+    if (!res.ok) {
+        throw new Error(`Gagal memuat telemetri IoT: HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+/**
+ * Mengirim satu entri pengujian modul IoT (dari ESP32 maupun pencatatan uji sensor/aktuator di Web).
+ */
+export async function postIoTTelemetryApi(
+    payload: IoTTelemetryRequestPayload
+): Promise<IoTTelemetryItem> {
+    const res = await fetch(`${API_BASE_URL}/iot/telemetry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        throw new Error(`Gagal menyimpan telemetri IoT: HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+/**
+ * Menghapus seluruh rekaman telemetri pengujian IoT.
+ */
+export async function clearIoTTelemetryApi(): Promise<{ status: string; deleted_count: number }> {
+    const res = await fetch(`${API_BASE_URL}/iot/telemetry`, { method: 'DELETE' });
+    if (!res.ok) {
+        throw new Error(`Gagal menghapus telemetri IoT: HTTP ${res.status}`);
     }
     return res.json();
 }
